@@ -337,7 +337,6 @@ function StatusBar({ status }) {
     <div className={`p-4 rounded-xl border ${style} text-sm`}>
       {text}
       <p className="text-xs text-gray-500 mt-1">
-        (In a full system, status updates would sync from the admin dashboard.)
       </p>
     </div>
   );
