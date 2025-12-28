@@ -152,6 +152,8 @@ function NavItem({ href, children }) {
 /* -------------------------------- HERO -------------------------------- */
 
 function Hero() {
+  const navigate = useNavigate();
+
   return (
     <section className="relative overflow-hidden min-h-[650px] w-full">
       {/* BACKGROUND VIDEO LAYER */}
@@ -203,6 +205,16 @@ function Hero() {
               >
                 Talk to us
               </a>
+            </div>
+
+            {/* ✅ NEW ADMIN BUTTON (ONLY ADDITION) */}
+            <div className="mt-4">
+              <button
+                onClick={() => navigate("/admin")}
+                className="px-5 py-2 border border-gold text-gold font-semibold rounded-md hover:bg-gold hover:text-navy transition"
+              >
+                Admin Login
+              </button>
             </div>
           </div>
 
