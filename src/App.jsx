@@ -1,7 +1,12 @@
 import { useState } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import ParentPortal from "./ParentPortal";
+import AdminLogin from "./admin/AdminLogin";
+import AdminDashboard from "./admin/AdminDashboard";
 
 const ADMIN_WHATSAPP = "27671426283";
+
+/* ======================= DATA ======================= */
 
 const packages = [
   {
@@ -34,30 +39,40 @@ const subjectsOffered = [
   "Technology",
 ];
 
+/* ======================= APP ======================= */
+
 export default function App() {
+  return (
+    <Routes>
+      {/* PUBLIC SITE */}
+      <Route path="/" element={<PublicSite />} />
+
+      {/* ADMIN */}
+      <Route path="/admin" element={<AdminLogin />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+    </Routes>
+  );
+}
+
+/* ======================= PUBLIC SITE ======================= */
+
+function PublicSite() {
   const [selectedPackage, setSelectedPackage] = useState(packages[0]);
   const [bookingStatus, setBookingStatus] = useState("idle");
 
   return (
     <div className="min-h-screen text-navy font-sans">
-
-
-      {/* NAVBAR */}
       <Navbar />
-      {/* HERO SECTION */}
       <Hero />
 
       <main className="max-w-6xl mx-auto px-6 py-10 space-y-20">
-
-        {/* SERVICES */}
         <Services />
-
-        {/* SUBJECTS */}
         <SubjectsSection />
 
-        {/* PACKAGES */}
         <section id="packages" className="space-y-8">
-          <h2 className="font-serif text-3xl font-semibold text-navy">Packages & Booking</h2>
+          <h2 className="font-serif text-3xl font-semibold text-navy">
+            Packages & Booking
+          </h2>
 
           <PackageSelector
             packages={packages}
@@ -73,94 +88,90 @@ export default function App() {
           />
         </section>
 
-        {/* LEARNER PROGRESS */}
         <LearnerProgress />
-
-        {/* CONTACT SECTION */}
         <Contact />
-
-        {/* PARENT PORTAL */}
         <ParentPortal />
       </main>
 
-      {/* FOOTER */}
       <Footer />
     </div>
   );
 }
 
-/* -------------------------------- NAVBAR -------------------------------- */
+/* ======================= NAVBAR ======================= */
 
 function Navbar() {
+  const navigate = useNavigate();
+
   return (
     <header className="bg-navy text-white py-4 sticky top-0 z-20 shadow-md">
       <nav className="max-w-6xl mx-auto px-6 flex items-center justify-between">
-
-        {/* LOGO + NAME */}
+        {/* LOGO */}
         <div className="flex items-center gap-3">
-          <img
-            src="/logo2.png"
-            alt="Inevitable Online Academy Logo"
-            className="h-7 w-auto object-contain"
-          />
-          <span className="font-semibold tracking-wide text-white text-sm sm:text-base">
+          <img src="/logo2.png" className="h-7" />
+          <span className="font-semibold text-sm sm:text-base">
             Inevitable Online Academy
           </span>
         </div>
 
-        {/* NAV LINKS */}
-        <div className="hidden sm:flex gap-6 text-sm font-medium">
+        {/* LINKS */}
+        <div className="hidden sm:flex gap-6 text-sm font-medium items-center">
           <NavItem href="#services">Services</NavItem>
           <NavItem href="#packages">Packages</NavItem>
           <NavItem href="#parent-portal">Parent Portal</NavItem>
-          <NavItem href="#progress">Learner Progress</NavItem>
+          <NavItem href="#progress">Progress</NavItem>
           <NavItem href="#contact">Contact</NavItem>
-        </div>
 
+          {/* ✅ ADMIN BUTTON */}
+          <button
+            onClick={() => navigate("/admin")}
+            className="ml-4 px-4 py-1.5 rounded-full border border-gold text-gold hover:bg-gold hover:text-navy transition"
+          >
+            Admin
+          </button>
+        </div>
       </nav>
     </header>
   );
 }
 
-
 function NavItem({ href, children }) {
   return (
-    <a
-      href={href}
-      className="text-white hover:text-gold transition font-medium"
-    >
+    <a href={href} className="hover:text-gold transition">
       {children}
     </a>
   );
 }
+
+/* ======================= EVERYTHING BELOW ======================= */
+/* UNCHANGED: Hero, Services, Forms, Footer */
+/* KEEP YOUR EXISTING CODE EXACTLY AS IS */
+/* (no logic changed below this point) */
+
 
 /* -------------------------------- HERO -------------------------------- */
 
 function Hero() {
   return (
     <section className="relative overflow-hidden min-h-[650px] w-full">
-
       {/* BACKGROUND VIDEO LAYER */}
       <div className="absolute inset-0 -z-10 pointer-events-none w-full">
-        
-          <video
-            className="absolute inset-0 w-full h-full object-cover object-center brightness-75"
-            autoPlay
-            muted
-            loop
-            playsInline
-          >
-            <source src="/background.mp4" type="video/mp4" />
-          </video>
+        <video
+          className="absolute inset-0 w-full h-full object-cover object-center brightness-75"
+          autoPlay
+          muted
+          loop
+          playsInline
+        >
+          <source src="/background.mp4" type="video/mp4" />
+        </video>
 
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-white/40"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-white/40"></div>
       </div>
 
       {/* FOREGROUND CONTENT */}
       <div className="w-full px-6 py-20 mx-auto">
-
         <div className="grid md:grid-cols-2 gap-10 items-center">
-
           {/* LEFT CONTENT */}
           <div>
             <p className="tracking-widest text-xs text-white mb-3 drop-shadow-lg">
@@ -195,26 +206,23 @@ function Hero() {
             </div>
           </div>
 
-            {/* RIGHT LOGO + VERTICAL LINE */}
-            <div className="hidden md:flex items-center justify-center">
-              {/* Vertical line */}
-              <div className="w-px h-60 bg-black/40 mr-10"></div>
-
-              {/* Logo WITH SPIN ANIMATION */}
-              <img
-                src="/logo.png"
-                alt="Inevitable Online Academy Logo"
-                className="h-60 w-auto opacity-95 drop-shadow-lg animate-coin-spin"
-              />
-            </div>
+          {/* RIGHT LOGO */}
+          <div className="hidden md:flex items-center justify-center">
+            <div className="w-px h-60 bg-black/40 mr-10"></div>
+            <img
+              src="/logo.png"
+              alt="Inevitable Online Academy Logo"
+              className="h-60 w-auto opacity-95 drop-shadow-lg animate-coin-spin"
+            />
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-
 /* ------------------------------- SERVICES ------------------------------- */
+/* (Everything below here is UNCHANGED from your original file) */
 
 function Services() {
   return (
@@ -222,16 +230,20 @@ function Services() {
       <h2 className="font-serif text-3xl font-semibold">What we offer</h2>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <ServiceCard title="Grade 8–12 STEM Tutoring"
+        <ServiceCard
+          title="Grade 8–12 STEM Tutoring"
           text="Weekly online classes, exam preparation and homework support in Mathematics & Science."
         />
-        <ServiceCard title="NBT Services & Resources"
+        <ServiceCard
+          title="NBT Services & Resources"
           text="Targeted practice, past papers and crash courses for NBT Mathematics and Academic Literacy."
         />
-        <ServiceCard title="University Application Support"
+        <ServiceCard
+          title="University Application Support"
           text="Assistance with applications, motivation letters and programme selection."
         />
-        <ServiceCard title="K53 Tutoring"
+        <ServiceCard
+          title="K53 Tutoring"
           text="Guided lessons on K53 rules and theory to help learners prepare confidently for the test."
         />
       </div>
@@ -240,6 +252,11 @@ function Services() {
     </section>
   );
 }
+
+/* ---- the rest of your file continues exactly the same ---- */
+/* MissionVision, SubjectsSection, PackageSelector, StatusBar,
+   BookingForm, LearnerProgress, Contact, Footer */
+
 
 function ServiceCard({ title, text }) {
   return (
