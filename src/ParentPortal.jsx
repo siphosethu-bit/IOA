@@ -90,11 +90,11 @@ export default function ParentPortal() {
           </h2>
           <p className="mt-2 text-sm text-white/80 md:text-base">
             Log in with your phone number to see live progress, homework status
-            and tutor notes – all in one place.
+            and tutor notes all in one place.
           </p>
         </div>
         <div className="mt-4 rounded-full border border-emerald-300/40 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-100 md:mt-0">
-          Prototype preview – data is sample for now.
+          Comming soon: full live integration with WhatsApp OTP login
         </div>
       </div>
 
