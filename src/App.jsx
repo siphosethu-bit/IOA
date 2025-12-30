@@ -39,6 +39,37 @@ const subjectsOffered = [
   "Technology",
 ];
 
+/* ✅ NEW: Pricing options (added only) */
+const pricingOptions = [
+  {
+    id: "one-on-one",
+    title: "One-on-one session",
+    subtitle: "Per hour",
+    price: 250,
+    priceLabel: "R250",
+    description: "Private 1:1 tutoring tailored to your learner’s needs.",
+    badge: "Most flexible",
+  },
+  {
+    id: "group-1",
+    title: "Group sessions",
+    subtitle: "1 subject • Monthly (2 sessions/week)",
+    price: 250,
+    priceLabel: "R250",
+    description: "Structured group sessions for one subject, twice per week.",
+    badge: "Best value",
+  },
+  {
+    id: "group-2",
+    title: "Group sessions",
+    subtitle: "2 subjects • Monthly (2 sessions/week)",
+    price: 400,
+    priceLabel: "R400",
+    description: "Two subjects supported monthly with consistent weekly sessions.",
+    badge: "Popular",
+  },
+];
+
 /* ======================= APP ======================= */
 
 export default function App() {
@@ -54,37 +85,137 @@ export default function App() {
   );
 }
 
+// ⚠️ EVERYTHING ABOVE REMAINS EXACTLY THE SAME
+// imports, data, helpers — UNCHANGED
+
+// ... [imports + constants unchanged]
+
 /* ======================= PUBLIC SITE ======================= */
 
 function PublicSite() {
   const [selectedPackage, setSelectedPackage] = useState(packages[0]);
   const [bookingStatus, setBookingStatus] = useState("idle");
+  const [bookingDetails, setBookingDetails] = useState(null);
+  const [cartItem, setCartItem] = useState(null);
+  const [addingId, setAddingId] = useState(null);
+  const [showCart, setShowCart] = useState(false);
+  const [toast, setToast] = useState({ show: false, text: "" });
+  const [paySoon, setPaySoon] = useState(false);
+
+  const showToast = (text) => {
+    setToast({ show: true, text });
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(
+      () => setToast({ show: false, text: "" }),
+      1800
+    );
+  };
+
+  const handleSaveBooking = (formPayload) => {
+    setBookingDetails(formPayload);
+    setBookingStatus("pending");
+    showToast("Booking details saved. Now choose a tutoring option below.");
+  };
+
+  const handleAddToCart = (option) => {
+    if (!bookingDetails) {
+      showToast("Please complete your booking details first.");
+      return;
+    }
+
+    setAddingId(option.id);
+
+    setTimeout(() => {
+      setCartItem({ ...option });
+      setShowCart(true);
+      setAddingId(null);
+      showToast(`${option.title} added to cart.`);
+    }, 260);
+  };
+
+  const handleRemoveCart = () => {
+    setCartItem(null);
+    showToast("Removed from cart.");
+  };
+
+  const handleWhatsAppCheckout = () => {
+    if (!bookingDetails || !cartItem) return;
+
+    const msg = `
+New booking request – Inevitable Online Academy
+
+Learner: ${bookingDetails.learnerName}
+Parent: ${bookingDetails.parentName || "N/A"}
+Grade: ${bookingDetails.grade}
+Package: ${selectedPackage.name}
+
+Selected tutoring option:
+${cartItem.title} – ${cartItem.subtitle}
+Price: R${cartItem.price}
+
+WhatsApp: ${bookingDetails.contactWhatsapp}
+Email: ${bookingDetails.email}
+
+Notes:
+${bookingDetails.notes}
+    `.trim();
+
+    window.open(
+      `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`
+    );
+  };
 
   return (
     <div className="min-h-screen text-navy font-sans">
       <Navbar />
       <Hero />
 
+      {/* Toast */}
+      {toast.show && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50">
+          <div className="rounded-full border border-gold bg-white px-4 py-2 shadow-md text-sm">
+            {toast.text}
+          </div>
+        </div>
+      )}
+
       <main className="max-w-6xl mx-auto px-6 py-10 space-y-20">
         <Services />
         <SubjectsSection />
 
         <section id="packages" className="space-y-8">
-          <h2 className="font-serif text-3xl font-semibold text-navy">
+          <h2 className="font-serif text-3xl font-semibold">
             Packages & Booking
           </h2>
 
+          {/* 1️⃣ Package choice */}
           <PackageSelector
             packages={packages}
             selectedPackage={selectedPackage}
             onSelect={setSelectedPackage}
           />
 
+          {/* 2️⃣ Status */}
           <StatusBar status={bookingStatus} />
 
+          {/* 3️⃣ Booking details FIRST */}
           <BookingForm
             selectedPackage={selectedPackage}
-            onSubmitted={() => setBookingStatus("pending")}
+            onSubmitted={handleSaveBooking}
+          />
+
+          {/* 4️⃣ Pricing + Cart AFTER booking details */}
+          <PricingAndCart
+            pricingOptions={pricingOptions}
+            addingId={addingId}
+            onAddToCart={handleAddToCart}
+            cartItem={cartItem}
+            showCart={showCart}
+            setShowCart={setShowCart}
+            onRemoveCart={handleRemoveCart}
+            onWhatsAppCheckout={handleWhatsAppCheckout}
+            onPayOnline={() => setPaySoon(true)}
+            bookingDetailsReady={!!bookingDetails}
           />
         </section>
 
@@ -97,6 +228,7 @@ function PublicSite() {
     </div>
   );
 }
+
 
 /* ======================= NAVBAR ======================= */
 
@@ -147,7 +279,6 @@ function NavItem({ href, children }) {
 /* UNCHANGED: Hero, Services, Forms, Footer */
 /* KEEP YOUR EXISTING CODE EXACTLY AS IS */
 /* (no logic changed below this point) */
-
 
 /* -------------------------------- HERO -------------------------------- */
 
@@ -265,11 +396,6 @@ function Services() {
   );
 }
 
-/* ---- the rest of your file continues exactly the same ---- */
-/* MissionVision, SubjectsSection, PackageSelector, StatusBar,
-   BookingForm, LearnerProgress, Contact, Footer */
-
-
 function ServiceCard({ title, text }) {
   return (
     <div className="p-6 border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
@@ -282,10 +408,12 @@ function ServiceCard({ title, text }) {
 function MissionVision() {
   return (
     <div className="grid md:grid-cols-2 gap-6">
-      <MVCard title="Our Mission"
+      <MVCard
+        title="Our Mission"
         text="To make high-quality STEM tutoring, NBT preparation, university support and K53 guidance accessible to every learner in South Africa."
       />
-      <MVCard title="Our Vision"
+      <MVCard
+        title="Our Vision"
         text="To become the leading online academy offering trusted academic support from Grade 8 to university building confident, future-ready learners."
       />
     </div>
@@ -351,6 +479,195 @@ function PackageSelector({ packages, selectedPackage, onSelect }) {
   );
 }
 
+/* ✅ NEW: Pricing + Cart block (added under package selection) */
+function PricingAndCart({
+  pricingOptions,
+  addingId,
+  onAddToCart,
+  cartItem,
+  showCart,
+  setShowCart,
+  onRemoveCart,
+  onWhatsAppCheckout,
+  onPayOnline,
+  bookingDetailsReady,
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <h3 className="font-serif text-2xl font-semibold text-navy">
+            Pricing & selection
+          </h3>
+          <p className="text-sm text-gray-600 mt-1 max-w-2xl">
+            Choose the tutoring option you want, add it to your cart, then check out.
+            {` `}
+            {!bookingDetailsReady && (
+              <span className="text-gray-600">
+                (Please submit booking details below first.)
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* Cart toggle button (only appears when there is something or user opened it) */}
+        {(cartItem || showCart) && (
+          <button
+            type="button"
+            onClick={() => setShowCart((v) => !v)}
+            className={`px-4 py-2 rounded-full border border-gold text-gold hover:bg-gold hover:text-navy transition ${
+              cartItem ? "animate-cart-pulse" : ""
+            }`}
+          >
+            {showCart ? "Hide cart" : "View cart"}
+          </button>
+        )}
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        {pricingOptions.map((opt) => {
+          const isAdding = addingId === opt.id;
+
+          return (
+            <div
+              key={opt.id}
+              className={`p-6 rounded-xl border bg-white shadow-sm transition ${
+                isAdding ? "scale-[0.99] opacity-90" : "hover:shadow-md"
+              } border-gray-200`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-serif text-lg font-semibold text-navy">
+                    {opt.title}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">{opt.subtitle}</div>
+                </div>
+
+                <div className="text-right">
+                  <div className="text-2xl font-semibold text-navy">{opt.priceLabel}</div>
+                  <div className="text-xs text-gray-500">ZAR</div>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-700 mt-4">{opt.description}</p>
+
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-xs px-3 py-1 rounded-full border border-gold text-gold">
+                  {opt.badge}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => onAddToCart(opt)}
+                  disabled={!bookingDetailsReady}
+                  className={`px-4 py-2 rounded-md font-semibold shadow transition ${
+                    bookingDetailsReady
+                      ? "bg-gold text-navy hover:bg-[#b88f20]"
+                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  }`}
+                >
+                  {isAdding ? "Adding…" : "Add to cart"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Cart Panel */}
+      {(showCart || cartItem) && (
+        <div className="p-6 bg-gray-50 border border-gray-200 rounded-xl">
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <h4 className="font-serif text-xl font-semibold text-navy">Your cart</h4>
+              <p className="text-sm text-gray-600 mt-1">
+                Review your selected option and check out.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowCart(false)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Close
+            </button>
+          </div>
+
+          {!cartItem ? (
+            <div className="mt-5 text-sm text-gray-600">
+              Your cart is empty. Select a pricing option above.
+            </div>
+          ) : (
+            <div className="mt-5 grid md:grid-cols-3 gap-6 items-start">
+              <div className="md:col-span-2">
+                <div className="p-5 bg-white border border-gray-200 rounded-xl">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="font-serif text-lg font-semibold text-navy">
+                        {cartItem.title}
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">{cartItem.subtitle}</div>
+
+                      <div className="mt-3 text-xs text-gray-500">
+                        Linked to your booking request.
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-xl font-semibold text-navy">
+                        R{cartItem.price}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={onRemoveCart}
+                        className="mt-3 text-xs text-gold font-semibold underline hover:text-[#b88f20]"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 bg-white border border-gray-200 rounded-xl space-y-4">
+                <div className="flex justify-between text-sm text-gray-700">
+                  <span>Subtotal</span>
+                  <span className="font-semibold text-navy">R{cartItem.price}</span>
+                </div>
+
+                <div className="text-xs text-gray-500">
+                  Checkout options:
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onWhatsAppCheckout}
+                  className="w-full px-4 py-2 bg-gold text-navy font-semibold rounded-md shadow hover:bg-[#b88f20] transition"
+                >
+                  Checkout via WhatsApp
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onPayOnline}
+                  className="w-full px-4 py-2 border border-gold text-gold font-semibold rounded-md hover:bg-gold hover:text-navy transition"
+                >
+                  Pay online (coming soon)
+                </button>
+
+                <p className="text-xs text-gray-500">
+                  For now, WhatsApp checkout starts your booking chat with IOA.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ------------------------------ STATUS BAR ------------------------------ */
 
 function StatusBar({ status }) {
@@ -358,15 +675,14 @@ function StatusBar({ status }) {
   let style = "bg-gray-50 border-gray-200 text-gray-600";
 
   if (status === "pending") {
-    text = "Booking sent — pending review";
+    text = "Booking saved — choose a tutoring option and check out";
     style = "bg-gray-100 border-gray-300 text-navy";
   }
 
   return (
     <div className={`p-4 rounded-xl border ${style} text-sm`}>
       {text}
-      <p className="text-xs text-gray-500 mt-1">
-      </p>
+      <p className="text-xs text-gray-500 mt-1"></p>
     </div>
   );
 }
@@ -393,26 +709,9 @@ function BookingForm({ selectedPackage, onSubmitted }) {
   const submit = (e) => {
     e.preventDefault();
 
-    const msg = `
-New booking request – Inevitable Online Academy
-
-Learner: ${form.learnerName}
-Parent: ${form.parentName || "N/A"}
-Grade: ${form.grade}
-Package: ${selectedPackage.name}
-Subjects: ${form.subjects}
-Preferred times: ${form.preferredTimes}
-
-Contact:
-WhatsApp: ${form.contactWhatsapp}
-Email: ${form.email}
-
-Notes:
-${form.notes}
-    `.trim();
-
-    window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`);
-    onSubmitted();
+    // ✅ NEW FLOW:
+    // Save booking details first (cart + checkout happens above).
+    onSubmitted({ ...form, selectedPackageName: selectedPackage.name });
   };
 
   return (
@@ -448,23 +747,71 @@ ${form.notes}
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <Input label="Learner full name" name="learnerName" value={form.learnerName} onChange={update} required />
-        <Input label="Parent / Guardian name" name="parentName" value={form.parentName} onChange={update} />
-        <Input label="Grade" name="grade" value={form.grade} onChange={update} required />
-        <Input label="WhatsApp number" name="contactWhatsapp" value={form.contactWhatsapp} onChange={update} required />
-        <Input label="Email address" name="email" value={form.email} onChange={update} />
-        <Input label="Subjects / focus areas" name="subjects" value={form.subjects} onChange={update} />
+        <Input
+          label="Learner full name"
+          name="learnerName"
+          value={form.learnerName}
+          onChange={update}
+          required
+        />
+        <Input
+          label="Parent / Guardian name"
+          name="parentName"
+          value={form.parentName}
+          onChange={update}
+        />
+        <Input
+          label="Grade"
+          name="grade"
+          value={form.grade}
+          onChange={update}
+          required
+        />
+        <Input
+          label="WhatsApp number"
+          name="contactWhatsapp"
+          value={form.contactWhatsapp}
+          onChange={update}
+          required
+        />
+        <Input
+          label="Email address"
+          name="email"
+          value={form.email}
+          onChange={update}
+        />
+        <Input
+          label="Subjects / focus areas"
+          name="subjects"
+          value={form.subjects}
+          onChange={update}
+        />
       </div>
 
-      <Textarea label="Preferred days & times" name="preferredTimes" value={form.preferredTimes} onChange={update} />
-      <Textarea label="Additional notes" name="notes" value={form.notes} onChange={update} />
+      <Textarea
+        label="Preferred days & times"
+        name="preferredTimes"
+        value={form.preferredTimes}
+        onChange={update}
+      />
+      <Textarea
+        label="Additional notes"
+        name="notes"
+        value={form.notes}
+        onChange={update}
+      />
 
+      {/* ✅ Button text updated to match new flow (still same styling) */}
       <button
         type="submit"
         className="px-5 py-2 bg-gold text-navy font-semibold rounded-md shadow hover:bg-[#b88f20] transition"
       >
-        Send booking via WhatsApp
+        Save booking details
       </button>
+
+      <p className="text-xs text-gray-500">
+        After saving, select a tutoring option above and check out via WhatsApp.
+      </p>
     </form>
   );
 }
