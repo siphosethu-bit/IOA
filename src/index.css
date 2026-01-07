@@ -29,3 +29,16 @@ body {
   animation: coin-spin 6s linear infinite;
   transform-style: preserve-3d;
 }
+
+@keyframes testimonials-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-testimonials-scroll {
+  animation: testimonials-scroll 40s linear infinite;
+}

@@ -45,6 +45,7 @@ export default function PublicSite() {
 
       <main className="max-w-6xl mx-auto px-6 py-10 space-y-20">
         <Services />
+        <Testimonials />
         <SubjectsSection />
 
         <section id="packages" className="space-y-8">
@@ -232,6 +233,63 @@ function Services() {
     </section>
   );
 }
+
+/* ---------------------------- TESTIMONIALS ---------------------------- */
+
+function Testimonials() {
+  const testimonials = [
+    {
+      name: "Mrs Mokoena (Parent)",
+      quote:
+        "My son Thabo went from 45% to 68% in just one term. The tutors are patient and very professional.",
+    },
+    {
+      name: "Sipho N. (Grade 11)",
+      quote:
+        "I finally understand Maths. My confidence improved and I’m no longer scared of exams.",
+    },
+    {
+      name: "Mr Dlamini (Parent)",
+      quote:
+        "Excellent communication and real results. Anele’s marks improved across all subjects.",
+    },
+    {
+      name: "Tshepo K. (Grade 10)",
+      quote:
+        "The lessons are clear and easy to follow. I improved my Physical Sciences a lot.",
+    },
+    {
+      name: "Mrs Khumalo (Parent)",
+      quote:
+        "Very reliable tutoring. We saw improvement within weeks, not months.",
+    },
+  ];
+
+  return (
+    <section className="space-y-6 overflow-hidden">
+      <h2 className="font-serif text-3xl font-semibold text-navy">
+        What parents & learners say
+      </h2>
+
+      <div className="relative overflow-hidden">
+        <div className="flex gap-6 w-max animate-testimonials-scroll">
+          {[...testimonials, ...testimonials].map((t, i) => (
+            <div
+              key={i}
+              className="min-w-[300px] max-w-sm p-5 bg-white border border-gray-200 rounded-xl shadow-sm"
+            >
+              <p className="text-sm text-gray-700 italic mb-3">
+                “{t.quote}”
+              </p>
+              <p className="text-sm font-semibold text-navy">{t.name}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 
 function ServiceCard({ title, text }) {
   return (

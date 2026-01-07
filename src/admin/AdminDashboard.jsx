@@ -1,9 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /* ---------------- MOCK DATA ---------------- */
 
 const TERMS = ["Term 1", "Term 2", "Term 3"];
 const GRADES = ["All", "9", "10", "11", "12"];
+
+/* ✅ NEW: Month helpers (for monthly payments tracking) */
+const getCurrentMonthKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const CURRENT_MONTH_KEY = getCurrentMonthKey();
+const CURRENT_MONTH_LABEL = new Date().toLocaleString("default", {
+  month: "long",
+  year: "numeric",
+});
 
 const MOCK_LEARNERS = [
   {
@@ -18,6 +30,9 @@ const MOCK_LEARNERS = [
     weaknesses: "Word problems",
     career: "Engineering",
     attendance: [true, true, false, true, true],
+    attendanceByDate: {},
+    /* ✅ NEW: monthly payments map */
+    payments: { [CURRENT_MONTH_KEY]: false },
   },
   {
     id: 2,
@@ -31,6 +46,10 @@ const MOCK_LEARNERS = [
     weaknesses: "Chemistry calculations",
     career: "Medicine",
     attendance: [true, true, true, true, true],
+    attendanceByDate: {},
+
+    /* ✅ NEW */
+    payments: { [CURRENT_MONTH_KEY]: true },
   },
   {
     id: 3,
@@ -44,6 +63,10 @@ const MOCK_LEARNERS = [
     weaknesses: "Foundations",
     career: "Architecture",
     attendance: [false, true, false, true, false],
+    attendanceByDate: {},
+
+    /* ✅ NEW */
+    payments: { [CURRENT_MONTH_KEY]: false },
   },
 ];
 
@@ -60,21 +83,147 @@ const normalizeGrade = (value) => {
   return grade;
 };
 
+/* -------- PHASE 1: Week Date Helpers -------- */
+
+// Returns Monday → Friday (YYYY-MM-DD)
+const getWeekDates = () => {
+  const today = new Date();
+  const day = today.getDay(); // 0 = Sun
+  const diff = day === 0 ? -6 : 1 - day;
+
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diff);
+
+  return Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d.toISOString().split("T")[0];
+  });
+};
+
+const WEEK_DATES = getWeekDates();
+
+/* -------- PHASE 2: Local Storage (persist demo data) -------- */
+const STORAGE_KEY = "ioa_admin_learners_v1";
+
+// Normalize/upgrade any saved data to the shape we expect
+const hydrateLearners = (rawLearners) => {
+  const list = Array.isArray(rawLearners) ? rawLearners : [];
+
+  return list.map((l) => {
+    const attendance = Array.isArray(l.attendance)
+      ? l.attendance.slice(0, 5)
+      : [false, false, false, false, false];
+
+    // Ensure length is exactly 5
+    while (attendance.length < 5) attendance.push(false);
+
+    const attendanceByDate =
+      l && typeof l.attendanceByDate === "object" && l.attendanceByDate
+        ? { ...l.attendanceByDate }
+        : {};
+
+    // Backfill current week’s dates from the attendance array (so old data still works)
+    WEEK_DATES.forEach((dateKey, i) => {
+      if (attendanceByDate[dateKey] === undefined) {
+        attendanceByDate[dateKey] = !!attendance[i];
+      }
+    });
+
+    return {
+      ...l,
+      attendance,
+      attendanceByDate,
+    };
+  });
+};
+
+/* -------- PHASE 2: Monthly Calendar Helpers -------- */
+
+const getMonthDays = (year, month) => {
+  const days = [];
+  const d = new Date(year, month, 1);
+
+  while (d.getMonth() === month) {
+    const day = d.getDay(); // 0 Sun, 6 Sat
+    if (day !== 0 && day !== 6) {
+      days.push(new Date(d));
+    }
+    d.setDate(d.getDate() + 1);
+  }
+
+  return days;
+};
+
+const formatDateKey = (date) =>
+  date.toISOString().split("T")[0];
+
+
+
 /* ---------------- MAIN ---------------- */
 
 export default function AdminDashboard() {
-  // ✅ CHANGE: learners is now stateful so we can add new learners
-  const [learners, setLearners] = useState(MOCK_LEARNERS);
 
+  
+  // ✅ CHANGE: learners is now stateful so we can add new learners
+  const [learners, setLearners] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return hydrateLearners(JSON.parse(saved));
+    } catch (e) {
+      // ignore
+    }
+    return hydrateLearners(MOCK_LEARNERS);
+  });
+
+  // ✅ Persist demo data so refresh doesn’t wipe attendance/payments
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(learners));
+    } catch (e) {
+      // ignore
+    }
+  }, [learners]);
+
+  /* -------- Class Performance State -------- */
   const [term, setTerm] = useState(1);
   const [gradeFilter, setGradeFilter] = useState("All");
   const [showSuccess, setShowSuccess] = useState(false);
-  const [selectedLearner, setSelectedLearner] = useState(null);
+  const [selectedLearnerId, setSelectedLearnerId] = useState(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  // ✅ Remove Learner Mode
+  // ✅ Remove learner UX state
+  const [removeNotice, setRemoveNotice] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState(null);
+  // ✅ Remove Learner Mode
+  const [removeMode, setRemoveMode] = useState(false);
+  /* -------- Load Marks (NEW) -------- */
+  
+
+
+
+
+  const selectedLearner = learners.find(
+    (l) => l.id === selectedLearnerId
+  );
+
+  /* -------- Load Marks (NEW) -------- */
+  const [showMarksEditor, setShowMarksEditor] = useState(false);
+
+  const [assessments, setAssessments] = useState([
+    { id: 1, label: "Test 1", marks: {} },
+  ]);
 
   /* -------- Register Learner State (NEW) -------- */
   const [newLearnerName, setNewLearnerName] = useState("");
   const [newLearnerGrade, setNewLearnerGrade] = useState("");
   const [newParentPhone, setNewParentPhone] = useState("");
+
+  const [newParentName, setNewParentName] = useState("");
+  const [newSchool, setNewSchool] = useState("");
+  const [newStrengths, setNewStrengths] = useState("");
+  const [newWeaknesses, setNewWeaknesses] = useState("");
+
   const [createError, setCreateError] = useState("");
 
   /* -------- Focus This Week State -------- */
@@ -91,7 +240,21 @@ export default function AdminDashboard() {
     weeklyGoals: "Improve class average by 5%",
   });
 
-  const averages = learners.map((l) => l.averages[term - 1]);
+  const averages = learners.map((l) => {
+  let total = 0;
+  let count = 0;
+
+  assessments.forEach((a) => {
+    const mark = a.marks[l.id];
+    if (typeof mark === "number") {
+      total += mark;
+      count++;
+    }
+  });
+
+  return count === 0 ? 0 : Math.round(total / count);
+});
+
   const classAverage =
     averages.length === 0
       ? 0
@@ -113,7 +276,9 @@ export default function AdminDashboard() {
 
     // Validate required fields
     if (!name || !gradeNormalized || !phone) {
-      setCreateError("Please fill in Learner name, Grade, and Parent phone number.");
+      setCreateError(
+        "Please fill in Learner name, Grade, and Parent phone number."
+      );
       return;
     }
 
@@ -128,14 +293,16 @@ export default function AdminDashboard() {
       id: Date.now(),
       name,
       grade: gradeNormalized,
-      parent: "Parent",
+      parent: newParentName.trim() || "Not specified",
       phone,
-      school: "Not specified",
+      school: newSchool.trim() || "Not specified",
       averages: [0, 0, 0],
-      strengths: "—",
-      weaknesses: "—",
+      strengths: newStrengths.trim() || "—",
+      weaknesses: newWeaknesses.trim() || "—",
       career: "—",
       attendance: [false, false, false, false, false],
+      attendanceByDate: {},
+      payments: { [CURRENT_MONTH_KEY]: false },
     };
 
     setLearners((prev) => [...prev, newLearner]);
@@ -145,16 +312,93 @@ export default function AdminDashboard() {
     setNewLearnerGrade("");
     setNewParentPhone("");
 
-    // Show success popup (your existing popup)
+    setNewParentName("");
+    setNewSchool("");
+    setNewStrengths("");
+    setNewWeaknesses("");
+
     setShowSuccess(true);
+
+  };
+
+  const confirmRemoveLearner = () => {
+  if (!pendingRemoval) return;
+
+  const learnerId = pendingRemoval.id;
+
+  setLearners((prev) => prev.filter((l) => l.id !== learnerId));
+
+  // Clean up state
+  setPendingRemoval(null);
+  setRemoveMode(false);
+
+  if (selectedLearnerId === learnerId) {
+    setSelectedLearnerId(null);
+  }
+};
+
+
+
+  /* -------- PHASE 1: Attendance Toggle (click dots) -------- */
+
+  const toggleAttendance = (learnerId, index) => {
+    const dateKey = WEEK_DATES[index];
+
+    setLearners((prev) =>
+      prev.map((l) => {
+        if (l.id !== learnerId) return l;
+
+        const updatedAttendance = [
+          ...(l.attendance || [false, false, false, false, false]),
+        ];
+        // Ensure length
+        while (updatedAttendance.length < 5) updatedAttendance.push(false);
+
+        updatedAttendance[index] = !updatedAttendance[index];
+
+        return {
+          ...l,
+          attendance: updatedAttendance,
+          attendanceByDate: {
+            ...(l.attendanceByDate || {}),
+            [dateKey]: updatedAttendance[index],
+          },
+        };
+      })
+    );
   };
 
   const canCreate =
     newLearnerName.trim() && newLearnerGrade.trim() && newParentPhone.trim();
 
+  /* ✅ NEW: Payment Status Handler (Paid / Not Paid per month) */
+  const handlePaymentChange = (learnerId, value) => {
+    setLearners((prev) =>
+      prev.map((l) => {
+        if (l.id !== learnerId) return l;
+
+        return {
+          ...l,
+          payments: {
+            ...(l.payments || {}),
+            [CURRENT_MONTH_KEY]: value === "paid",
+          },
+        };
+      })
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-10 space-y-12">
-      <h1 className="text-3xl font-semibold text-navy">Admin Dashboard</h1>
+      {/* ✅ Only change here: header now includes month badge */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-semibold text-navy">Admin Dashboard</h1>
+
+        {/* ✅ NEW: Month/Date Display */}
+        <span className="text-sm px-4 py-1 rounded-full bg-gold text-navy font-semibold">
+          Payments for {CURRENT_MONTH_LABEL}
+        </span>
+      </div>
 
       {/* ---------------- TOP GRID ---------------- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -189,6 +433,42 @@ export default function AdminDashboard() {
               if (createError) setCreateError("");
             }}
           />
+
+          <input
+            className="w-full border px-3 py-2 rounded"
+            placeholder="Parent name & surname"
+            value={newParentName}
+            onChange={(e) => {
+              setNewParentName(e.target.value);
+              if (createError) setCreateError("");
+            }}
+          />
+
+          <input
+            className="w-full border px-3 py-2 rounded"
+            placeholder="School"
+            value={newSchool}
+            onChange={(e) => {
+              setNewSchool(e.target.value);
+              if (createError) setCreateError("");
+            }}
+          />
+
+          <input
+            className="w-full border px-3 py-2 rounded"
+            placeholder="Strengths (e.g. Algebra, Geometry)"
+            value={newStrengths}
+            onChange={(e) => setNewStrengths(e.target.value)}
+          />
+
+          <input
+            className="w-full border px-3 py-2 rounded"
+            placeholder="Weaknesses (e.g. Word problems)"
+            value={newWeaknesses}
+            onChange={(e) => setNewWeaknesses(e.target.value)}
+          />
+
+
 
           {createError ? (
             <p className="text-sm text-red-600">{createError}</p>
@@ -305,36 +585,123 @@ export default function AdminDashboard() {
 
       {/* ---------------- CLASS PERFORMANCE ---------------- */}
       <section className="bg-white p-6 rounded-xl shadow">
-        <div className="flex justify-between mb-4">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-medium">Class Performance</h2>
 
-          <select
-            value={term}
-            onChange={(e) => setTerm(Number(e.target.value))}
-            className="border px-3 py-1 rounded"
-          >
-            {TERMS.map((t, i) => (
-              <option key={i} value={i + 1}>
-                {t}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowMarksEditor(!showMarksEditor)}
+              className="px-4 py-1 rounded bg-gold text-navy font-semibold text-sm"
+            >
+              Load Marks
+            </button>
+
+            <select
+              value={term}
+              onChange={(e) => setTerm(Number(e.target.value))}
+              className="border px-3 py-1 rounded"
+            >
+              {TERMS.map((t, i) => (
+                <option key={i} value={i + 1}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+
 
         <svg viewBox="0 0 300 120" className="w-full h-40">
           <rect x="0" y="60" width="300" height="60" fill="#fee2e2" />
           <rect x="0" y="0" width="300" height="40" fill="#dcfce7" />
 
           {averages.map((v, i) => (
-            <circle
-              key={i}
-              cx={50 + i * 80}
-              cy={120 - v}
-              r="4"
-              fill="#c9a227"
-            />
+            <circle key={i} cx={50 + i * 80} cy={120 - v} r="4" fill="#c9a227" />
           ))}
         </svg>
+      {showMarksEditor && (
+        <div className="mt-6 overflow-x-auto">
+          <table className="min-w-full border text-sm">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border px-3 py-2 text-left">Learner</th>
+
+                {assessments.map((a) => (
+                  <th key={a.id} className="border px-3 py-2">
+                    <input
+                      value={a.label}
+                      onChange={(e) =>
+                        setAssessments((prev) =>
+                          prev.map((x) =>
+                            x.id === a.id ? { ...x, label: e.target.value } : x
+                          )
+                        )
+                      }
+                      className="border px-2 py-1 rounded w-24 text-center"
+                    />
+                  </th>
+                ))}
+
+                <th className="border px-3 py-2">
+                  <button
+                    onClick={() =>
+                      setAssessments((prev) => [
+                        ...prev,
+                        { id: Date.now(), label: "New", marks: {} },
+                      ])
+                    }
+                    className="text-gold font-semibold"
+                  >
+                    + Add
+                  </button>
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {learners.map((l) => (
+                <tr key={l.id}>
+                  <td className="border px-3 py-2 font-medium">
+                    {l.name}
+                  </td>
+
+                  {assessments.map((a) => (
+                    <td key={a.id} className="border px-3 py-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={a.marks[l.id] ?? ""}
+                        onChange={(e) => {
+                          const value = Number(e.target.value);
+                          setAssessments((prev) =>
+                            prev.map((x) =>
+                              x.id === a.id
+                                ? {
+                                    ...x,
+                                    marks: {
+                                      ...x.marks,
+                                      [l.id]: value,
+                                    },
+                                  }
+                                : x
+                            )
+                          );
+                        }}
+                        className="w-16 border rounded px-2 py-1 text-center"
+                      />
+                    </td>
+                  ))}
+
+                  <td className="border px-3 py-2 text-center text-gray-400">
+                    %
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
         <p className="text-sm mt-2">
           Class average: <strong>{classAverage}%</strong>
@@ -351,10 +718,7 @@ export default function AdminDashboard() {
         <div className="flex justify-end mb-2">
           <div className="flex gap-2">
             {["M", "T", "W", "T", "F"].map((day, i) => (
-              <span
-                key={i}
-                className="w-3 text-xs text-gray-500 text-center"
-              >
+              <span key={i} className="w-3 text-xs text-gray-500 text-center">
                 {day}
               </span>
             ))}
@@ -372,8 +736,9 @@ export default function AdminDashboard() {
                 {l.attendance.map((present, i) => (
                   <span
                     key={i}
+                    onClick={() => toggleAttendance(l.id, i)}
                     title={present ? "Attended" : "Absent"}
-                    className={`w-3 h-3 rounded-full ${
+                    className={`w-3 h-3 rounded-full cursor-pointer ${
                       present ? "bg-green-500" : "bg-gray-300"
                     }`}
                   />
@@ -385,40 +750,153 @@ export default function AdminDashboard() {
       </section>
 
       {/* ---------------- LEARNERS ---------------- */}
+      
       <section className="bg-white p-6 rounded-xl shadow">
         <div className="flex justify-between items-center mb-4">
+          {/* Left */}
           <h2 className="text-xl font-medium">Learners</h2>
 
-          <select
-            value={gradeFilter}
-            onChange={(e) => setGradeFilter(e.target.value)}
-            className="border px-3 py-1 rounded"
-          >
-            {GRADES.map((g) => (
-              <option key={g} value={g}>
-                {g === "All" ? "All Grades" : `Grade ${g}`}
-              </option>
-            ))}
-          </select>
+          {/* Right controls */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setRemoveMode(!removeMode);
+                setRemoveNotice(!removeMode);
+              }}
+              className={`px-4 py-1 rounded text-sm font-semibold transition
+                ${
+                  removeMode
+                    ? "bg-red-700 text-white shadow-lg scale-105"
+                    : "bg-red-500 text-white hover:bg-red-600"
+                }`}
+            >
+              {removeMode ? "Cancel Remove" : "Remove Learner"}
+            </button>
+
+            <select
+              value={gradeFilter}
+              onChange={(e) => setGradeFilter(e.target.value)}
+              className="border px-3 py-1 rounded"
+            >
+              {GRADES.map((g) => (
+                <option key={g} value={g}>
+                  {g === "All" ? "All Grades" : `Grade ${g}`}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <ul className="space-y-3">
-          {filteredLearners.map((l) => (
-            <li
-              key={l.id}
-              onClick={() => setSelectedLearner(l)}
-              className="flex justify-between items-center p-3 border rounded cursor-pointer hover:bg-gray-50"
-            >
-              {l.name} (Grade {l.grade})
-              <span
-                className={`w-3 h-3 rounded-full ${statusColor(
-                  l.averages[term - 1]
-                )}`}
-              />
-            </li>
-          ))}
+          {filteredLearners.map((l) => {
+            const paid = !!(l.payments && l.payments[CURRENT_MONTH_KEY]);
+
+            return (
+              <li
+                  key={l.id}
+                  onClick={() => {
+                    if (removeMode) {
+                      setPendingRemoval(l);
+                    } else {
+                      setSelectedLearnerId(l.id);
+                    }
+                  }}
+                  className={`flex justify-between items-center p-3 border rounded cursor-pointer transition
+                    ${
+                      removeMode
+                        ? "border-red-300 bg-red-50 animate-[shake_0.3s_ease-in-out_infinite]"
+                        : "hover:bg-gray-50"
+                    }`}
+                >
+                  {/* Learner name */}
+                  <span
+                    className={
+                      paid
+                        ? "text-green-600 font-medium"
+                        : "text-red-600 font-medium"
+                    }
+                  >
+                    {l.name} (Grade {l.grade})
+                  </span>
+
+                  {/* Payment status */}
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={paid ? "paid" : "unpaid"}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handlePaymentChange(l.id, e.target.value);
+                      }}
+                      className="border px-2 py-1 rounded text-sm"
+                    >
+                      <option value="paid">Paid</option>
+                      <option value="unpaid">Not Paid</option>
+                    </select>
+
+
+                    <span
+                      className={`w-3 h-3 rounded-full ${
+                        paid ? "bg-green-500" : "bg-red-500"
+                      }`}
+                    />
+                  </div>
+                </li>
+            );
+          })}
         </ul>
       </section>
+      
+      {/* ---------------- REMOVE LEARNER CONFIRMATION ---------------- */}
+        {pendingRemoval && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md text-center relative">
+              
+              {/* Close */}
+              <button
+                onClick={() => setPendingRemoval(null)}
+                className="absolute top-3 right-4 text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+
+              {/* Icon */}
+              <div className="text-4xl mb-3">⚠️</div>
+
+              {/* Message */}
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Remove learner?
+              </h3>
+
+              <p className="text-sm text-gray-600 mb-6">
+                Are you sure you want to remove{" "}
+                <strong className="text-red-600">
+                  {pendingRemoval.name}
+                </strong>
+                ?<br />
+                This action <strong>cannot be undone</strong>.
+              </p>
+
+              {/* Actions */}
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => setPendingRemoval(null)}
+                  className="px-4 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={confirmRemoveLearner}
+                  className="px-4 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700"
+                >
+                  Yes, remove
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
       {/* ---------------- SUCCESS POPUP ---------------- */}
       {showSuccess && (
@@ -444,7 +922,7 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl shadow-xl max-w-lg w-full relative">
             <button
-              onClick={() => setSelectedLearner(null)}
+              onClick={() => setSelectedLearnerId(null)}
               className="absolute top-2 right-3"
             >
               ✕
@@ -473,6 +951,104 @@ export default function AdminDashboard() {
             <p>
               <strong>Career:</strong> {selectedLearner.career}
             </p>
+            {/* ---------------- PHASE 2: MONTHLY ATTENDANCE ---------------- */}
+              <div className="mt-6 border-t pt-4">
+                <div className="flex justify-between items-center mb-4">
+                  {/* Left */}
+                  <h2 className="text-xl font-medium">Learners</h2>
+
+                  {/* Right controls */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        setRemoveMode(!removeMode);
+                        setRemoveNotice(!removeMode);
+                      }}
+                      className={`px-4 py-1 rounded text-sm font-semibold transition
+                        ${
+                          removeMode
+                            ? "bg-red-700 text-white shadow-lg scale-105"
+                            : "bg-red-500 text-white hover:bg-red-600"
+                        }`}
+                    >
+                      {removeMode ? "Cancel Remove" : "Remove Learner"}
+                    </button>
+
+                    <select
+                      value={gradeFilter}
+                      onChange={(e) => setGradeFilter(e.target.value)}
+                      className="border px-3 py-1 rounded"
+                    >
+                      {GRADES.map((g) => (
+                        <option key={g} value={g}>
+                          {g === "All" ? "All Grades" : `Grade ${g}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Day labels */}
+                <div className="grid grid-cols-5 gap-2 text-center mb-1">
+                  {["M", "T", "W", "T", "F"].map((d) => (
+                    <span key={d} className="text-xs text-gray-500">
+                      {d}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Calendar grid */}
+                <div className="grid grid-cols-5 gap-2 text-center">
+                  {getMonthDays(
+                    calendarMonth.getFullYear(),
+                    calendarMonth.getMonth()
+                  ).map((date) => {
+                    const key = formatDateKey(date);
+                    const status = selectedLearner.attendanceByDate?.[key];
+
+                    return (
+                      <div key={key} className="flex flex-col items-center text-xs">
+                        <span>{date.getDate()}</span>
+                        <span
+                          className={`w-2 h-2 rounded-full mt-1 ${
+                            status === true
+                              ? "bg-green-500"
+                              : status === false
+                              ? "bg-gray-400"
+                              : "bg-gray-200"
+                          }`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Monthly summary */}
+                {(() => {
+                  const days = getMonthDays(
+                    calendarMonth.getFullYear(),
+                    calendarMonth.getMonth()
+                  );
+
+                  const attended = days.filter(
+                    (d) => selectedLearner.attendanceByDate?.[formatDateKey(d)]
+                  ).length;
+
+                  const total = days.length;
+                  const rate = total === 0 ? 0 : Math.round((attended / total) * 100);
+
+                  return (
+                    <div className="mt-4 text-sm text-gray-600">
+                      <p>
+                        Attended: <strong>{attended}</strong> / {total}
+                      </p>
+                      <p>
+                        Attendance rate: <strong>{rate}%</strong>
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
           </div>
         </div>
       )}

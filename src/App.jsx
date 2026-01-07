@@ -70,6 +70,41 @@ const pricingOptions = [
   },
 ];
 
+/* ---------------- TESTIMONIALS ---------------- */
+
+const testimonials = [
+  {
+    name: "Thabo M.",
+    role: "Parent (Grade 10 learner)",
+    quote:
+      "My child moved from 45% to 68% in one term. The tutors explain concepts patiently and keep us updated.",
+  },
+  {
+    name: "Sipho D.",
+    role: "Grade 11 learner",
+    quote:
+      "Maths finally makes sense now. The sessions are structured and I feel more confident writing tests.",
+  },
+  {
+    name: "Tshepo K.",
+    role: "Parent (Grade 9 learner)",
+    quote:
+      "What I like most is the feedback. I know exactly where my child is improving and what needs work.",
+  },
+  {
+    name: "Themba N.",
+    role: "Parent (Grade 12 learner)",
+    quote:
+      "NBT preparation was excellent. My son improved significantly and approached exams with confidence.",
+  },
+  {
+    name: "Anele S.",
+    role: "Grade 10 learner",
+    quote:
+      "The tutors are supportive and never rush. I’m no longer scared of Physical Sciences.",
+  },
+];
+
 /* ======================= APP ======================= */
 
 export default function App() {
@@ -100,7 +135,6 @@ function PublicSite() {
   const [addingId, setAddingId] = useState(null);
   const [showCart, setShowCart] = useState(false);
   const [toast, setToast] = useState({ show: false, text: "" });
-  const [paySoon, setPaySoon] = useState(false);
 
   const showToast = (text) => {
     setToast({ show: true, text });
@@ -110,6 +144,38 @@ function PublicSite() {
       1800
     );
   };
+  
+  const handlePayOnline = async () => {
+  if (!cartItem) {
+    showToast("Please add a tutoring option to your cart.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/.netlify/functions/create-yoco-checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: cartItem.price,
+        description: `${cartItem.title} – ${cartItem.subtitle}`,
+        successUrl: `${window.location.origin}/payment-success`,
+        cancelUrl: `${window.location.origin}/payment-cancelled`,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error("Checkout creation failed");
+    }
+
+    // Redirect to Yoco checkout
+    window.location.href = data.checkoutUrl;
+  } catch (err) {
+    console.error(err);
+    showToast("Online payment failed. Please try again.");
+  }
+};
 
   const handleSaveBooking = (formPayload) => {
     setBookingDetails(formPayload);
@@ -181,6 +247,7 @@ ${bookingDetails.notes}
 
       <main className="max-w-6xl mx-auto px-6 py-10 space-y-20">
         <Services />
+        <Testimonials />
         <SubjectsSection />
 
         <section id="packages" className="space-y-8">
@@ -214,7 +281,7 @@ ${bookingDetails.notes}
             setShowCart={setShowCart}
             onRemoveCart={handleRemoveCart}
             onWhatsAppCheckout={handleWhatsAppCheckout}
-            onPayOnline={() => setPaySoon(true)}
+            onPayOnline={handlePayOnline}
             bookingDetailsReady={!!bookingDetails}
           />
         </section>
@@ -395,6 +462,43 @@ function Services() {
     </section>
   );
 }
+
+/* ---------------- TESTIMONIALS ---------------- */
+
+function Testimonials() {
+  return (
+    <section className="space-y-6 overflow-hidden">
+      <h2 className="font-serif text-3xl font-semibold">
+        What parents & learners say
+      </h2>
+
+      <p className="text-gray-600 max-w-xl">
+        Real progress, real confidence, and consistent academic support.
+      </p>
+
+      <div className="relative w-full overflow-hidden">
+        <div className="flex gap-6 animate-testimonials-scroll">
+          {[...testimonials, ...testimonials].map((t, i) => (
+            <div
+              key={i}
+              className="min-w-[280px] max-w-[280px] bg-white border border-gray-200 rounded-xl p-5 shadow-sm"
+            >
+              <p className="text-sm text-gray-700 italic mb-4">
+                “{t.quote}”
+              </p>
+
+              <div className="text-sm font-semibold text-navy">
+                {t.name}
+              </div>
+              <div className="text-xs text-gray-500">{t.role}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 
 function ServiceCard({ title, text }) {
   return (
