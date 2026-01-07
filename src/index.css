@@ -40,5 +40,5 @@ body {
 }
 
 .animate-testimonials-scroll {
-  animation: testimonials-scroll 40s linear infinite;
+  animation: testimonials-scroll 15s linear infinite;
 }
