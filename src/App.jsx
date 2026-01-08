@@ -156,26 +156,38 @@ function PublicSite() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        amount: cartItem.price,
+        amount: cartItem.price, // rands
         description: `${cartItem.title} – ${cartItem.subtitle}`,
-        successUrl: `${window.location.origin}/payment-success`,
-        cancelUrl: `${window.location.origin}/payment-cancelled`,
+        successUrl: "https://inevitableacademy.com/payment-success",
+cancelUrl: "https://inevitableacademy.com/payment-cancelled",
+
       }),
     });
 
-    const data = await res.json();
+    const raw = await res.text();
+    console.log("Checkout raw response:", raw);
 
-    if (!res.ok) {
+    let data = {};
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      console.error("Failed to parse JSON:", e);
+    }
+
+    console.log("Checkout parsed:", data);
+
+
+    if (!res.ok || !data.checkoutUrl) {
       throw new Error("Checkout creation failed");
     }
 
-    // Redirect to Yoco checkout
     window.location.href = data.checkoutUrl;
   } catch (err) {
     console.error(err);
     showToast("Online payment failed. Please try again.");
   }
 };
+
 
   const handleSaveBooking = (formPayload) => {
     setBookingDetails(formPayload);

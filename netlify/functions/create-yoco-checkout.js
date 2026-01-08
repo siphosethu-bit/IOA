@@ -1,40 +1,41 @@
 export async function handler(event) {
   try {
-    // Only allow POST
     if (event.httpMethod !== "POST") {
       return {
         statusCode: 405,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ error: "Method Not Allowed" }),
       };
     }
 
-    // Parse request body
-    const { amount, description, successUrl, cancelUrl } = JSON.parse(event.body);
+    const { amount, description, successUrl, cancelUrl } = JSON.parse(event.body || "{}");
 
-    // Basic validation
-    if (!amount || !successUrl || !cancelUrl) {
+    if (amount == null || !successUrl || !cancelUrl) {
       return {
         statusCode: 400,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ error: "Missing required fields" }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: "Missing required fields (amount, successUrl, cancelUrl)" }),
       };
     }
 
-    // Load secret key
     const YOCO_SECRET_KEY = process.env.YOCO_SECRET_KEY;
     if (!YOCO_SECRET_KEY) {
-      throw new Error("YOCO_SECRET_KEY not set");
+      return {
+        statusCode: 500,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: "YOCO_SECRET_KEY not set" }),
+      };
     }
 
-    // Convert rands → cents
     const amountInCents = Math.round(Number(amount) * 100);
+    if (!Number.isFinite(amountInCents) || amountInCents <= 0) {
+      return {
+        statusCode: 400,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: `Invalid amount: ${amount}` }),
+      };
+    }
 
-    // Create Yoco checkout
     const response = await fetch("https://payments.yoco.com/api/checkouts", {
       method: "POST",
       headers: {
@@ -44,7 +45,7 @@ export async function handler(event) {
       body: JSON.stringify({
         amount: amountInCents,
         currency: "ZAR",
-        description,
+        description: description || "Inevitable Online Academy payment",
         success_url: successUrl,
         cancel_url: cancelUrl,
       }),
@@ -52,33 +53,47 @@ export async function handler(event) {
 
     const data = await response.json();
 
-    // Handle Yoco API errors
+    // If Yoco returns an error, pass it straight back to the browser
     if (!response.ok) {
       return {
-        statusCode: 500,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+        statusCode: response.status,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          error: "Yoco checkout creation failed",
+          yoco: data,
+        }),
       };
     }
 
-    // ✅ SUCCESS RESPONSE (THIS FIXES YOUR ISSUE)
+    // ✅ Yoco URL field might differ — accept all common variants
+    const checkoutUrl =
+      data.redirect_url ||
+      data.url ||
+      data.redirectUrl ||
+      data.redirectURL ||
+      data.redirect;
+
+    if (!checkoutUrl) {
+      // Return the full Yoco payload so we can see what it actually contains
+      return {
+        statusCode: 500,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          error: "No checkout URL returned from Yoco",
+          yoco: data,
+        }),
+      };
+    }
+
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        checkoutUrl: data.url, // Yoco hosted checkout URL
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ checkoutUrl }),
     };
   } catch (err) {
     return {
       statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ error: err.message }),
     };
   }
