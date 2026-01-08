@@ -1,35 +1,50 @@
-// netlify/functions/create-yoco-checkout.js
-
 export async function handler(event) {
   try {
-    // Only allow POST requests
+    // Only allow POST
     if (event.httpMethod !== "POST") {
       return {
         statusCode: 405,
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ error: "Method Not Allowed" }),
       };
     }
 
+    // Parse request body
     const { amount, description, successUrl, cancelUrl } = JSON.parse(event.body);
 
-    if (!amount) {
+    // Basic validation
+    if (!amount || !successUrl || !cancelUrl) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Amount is required" }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ error: "Missing required fields" }),
       };
     }
 
-    // Yoco API request
+    // Load secret key
+    const YOCO_SECRET_KEY = process.env.YOCO_SECRET_KEY;
+    if (!YOCO_SECRET_KEY) {
+      throw new Error("YOCO_SECRET_KEY not set");
+    }
+
+    // Convert rands → cents
+    const amountInCents = Math.round(Number(amount) * 100);
+
+    // Create Yoco checkout
     const response = await fetch("https://payments.yoco.com/api/checkouts", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.YOCO_SECRET_KEY}`,
+        Authorization: `Bearer ${YOCO_SECRET_KEY}`,
       },
       body: JSON.stringify({
-        amount: amount * 100, // Yoco uses cents
+        amount: amountInCents,
         currency: "ZAR",
-        description: description || "Inevitable Online Academy booking",
+        description,
         success_url: successUrl,
         cancel_url: cancelUrl,
       }),
@@ -37,25 +52,34 @@ export async function handler(event) {
 
     const data = await response.json();
 
+    // Handle Yoco API errors
     if (!response.ok) {
-      console.error("Yoco error:", data);
       return {
         statusCode: 500,
-        body: JSON.stringify({ error: "Failed to create checkout" }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
       };
     }
 
+    // ✅ SUCCESS RESPONSE (THIS FIXES YOUR ISSUE)
     return {
       statusCode: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        checkoutUrl: data.redirectUrl,
+        checkoutUrl: data.url, // Yoco hosted checkout URL
       }),
     };
   } catch (err) {
-    console.error("Server error:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Internal server error" }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ error: err.message }),
     };
   }
 }
