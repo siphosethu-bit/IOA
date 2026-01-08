@@ -1,22 +1,30 @@
+/* Importing Necessary Data: 
+   useState = memory
+   useEffect = side effects (e.g., localStorage)
+*/
 import { useEffect, useState } from "react";
 
 /* ---------------- MOCK DATA ---------------- */
-
-const TERMS = ["Term 1", "Term 2", "Term 3"];
+/* Creating constant (never changes) list of things to use in system */
+const TERMS = ["Term 1", "Term 2", "Term 3", "Term 4"];
 const GRADES = ["All", "9", "10", "11", "12"];
 
-/* ✅ NEW: Month helpers (for monthly payments tracking) */
+/* ---------------- Month helpers (for monthly payments tracking) ---------------- */
+/* Creating a unique label for each month in the format YYYY-MM */
 const getCurrentMonthKey = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 
+/* Current month key and label */
 const CURRENT_MONTH_KEY = getCurrentMonthKey();
 const CURRENT_MONTH_LABEL = new Date().toLocaleString("default", {
   month: "long",
   year: "numeric",
 });
 
+/* ---------------- MOCK LEARNERS ---------------- */
+/* Sample data for learners */
 const MOCK_LEARNERS = [
   {
     id: 1,
@@ -31,7 +39,7 @@ const MOCK_LEARNERS = [
     career: "Engineering",
     attendance: [true, true, false, true, true],
     attendanceByDate: {},
-    /* ✅ NEW: monthly payments map */
+    /* monthly payments map */
     payments: { [CURRENT_MONTH_KEY]: false },
   },
   {
@@ -47,8 +55,6 @@ const MOCK_LEARNERS = [
     career: "Medicine",
     attendance: [true, true, true, true, true],
     attendanceByDate: {},
-
-    /* ✅ NEW */
     payments: { [CURRENT_MONTH_KEY]: true },
   },
   {
@@ -64,18 +70,16 @@ const MOCK_LEARNERS = [
     career: "Architecture",
     attendance: [false, true, false, true, false],
     attendanceByDate: {},
-
-    /* ✅ NEW */
     payments: { [CURRENT_MONTH_KEY]: false },
   },
 ];
 
 /* ---------------- HELPERS ---------------- */
-
+/* Determine color based on average score */
 const statusColor = (avg) =>
   avg < 50 ? "bg-red-500" : avg < 65 ? "bg-yellow-400" : "bg-green-500";
 
-// Normalize grade input to "9"/"10"/"11"/"12" (supports "10", "Grade 10", " 10 ", etc.)
+// Normalizing grade input to "9"/"10"/"11"/"12" (supports "10", "Grade 10", " 10 ", etc.)
 const normalizeGrade = (value) => {
   const digits = String(value || "").match(/\d+/g);
   if (!digits) return "";
@@ -84,13 +88,11 @@ const normalizeGrade = (value) => {
 };
 
 /* -------- PHASE 1: Week Date Helpers -------- */
-
 // Returns Monday → Friday (YYYY-MM-DD)
 const getWeekDates = () => {
   const today = new Date();
   const day = today.getDay(); // 0 = Sun
   const diff = day === 0 ? -6 : 1 - day;
-
   const monday = new Date(today);
   monday.setDate(today.getDate() + diff);
 
@@ -103,7 +105,7 @@ const getWeekDates = () => {
 
 const WEEK_DATES = getWeekDates();
 
-/* -------- PHASE 2: Local Storage (persist demo data) -------- */
+/* -------- PHASE 2: Local Storage (demo data) -------- */
 const STORAGE_KEY = "ioa_admin_learners_v1";
 
 // Normalize/upgrade any saved data to the shape we expect
@@ -139,7 +141,6 @@ const hydrateLearners = (rawLearners) => {
 };
 
 /* -------- PHASE 2: Monthly Calendar Helpers -------- */
-
 const getMonthDays = (year, month) => {
   const days = [];
   const d = new Date(year, month, 1);
@@ -158,14 +159,10 @@ const getMonthDays = (year, month) => {
 const formatDateKey = (date) =>
   date.toISOString().split("T")[0];
 
-
-
 /* ---------------- MAIN ---------------- */
 
 export default function AdminDashboard() {
-
-  
-  // ✅ CHANGE: learners is now stateful so we can add new learners
+  // learners is now stateful so we can add new learners
   const [learners, setLearners] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -176,7 +173,7 @@ export default function AdminDashboard() {
     return hydrateLearners(MOCK_LEARNERS);
   });
 
-  // ✅ Persist demo data so refresh doesn’t wipe attendance/payments
+  // Persist demo data so refresh doesn’t wipe attendance/payments
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(learners));
@@ -191,25 +188,15 @@ export default function AdminDashboard() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedLearnerId, setSelectedLearnerId] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
-  // ✅ Remove Learner Mode
-  // ✅ Remove learner UX state
   const [removeNotice, setRemoveNotice] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState(null);
-  // ✅ Remove Learner Mode
   const [removeMode, setRemoveMode] = useState(false);
-  /* -------- Load Marks (NEW) -------- */
-  
 
-
-
-
+  /* -------- Load Marks -------- */
   const selectedLearner = learners.find(
     (l) => l.id === selectedLearnerId
   );
-
-  /* -------- Load Marks (NEW) -------- */
   const [showMarksEditor, setShowMarksEditor] = useState(false);
-
   const [assessments, setAssessments] = useState([
     { id: 1, label: "Test 1", marks: {} },
   ]);
@@ -218,18 +205,14 @@ export default function AdminDashboard() {
   const [newLearnerName, setNewLearnerName] = useState("");
   const [newLearnerGrade, setNewLearnerGrade] = useState("");
   const [newParentPhone, setNewParentPhone] = useState("");
-
   const [newParentName, setNewParentName] = useState("");
   const [newSchool, setNewSchool] = useState("");
   const [newStrengths, setNewStrengths] = useState("");
   const [newWeaknesses, setNewWeaknesses] = useState("");
-
   const [createError, setCreateError] = useState("");
 
   /* -------- Focus This Week State -------- */
-
   const [editingFocus, setEditingFocus] = useState(false);
-
   const [focus, setFocus] = useState({
     topics: [
       "Grade 10 Maths Algebra revision",
@@ -265,8 +248,7 @@ export default function AdminDashboard() {
       ? learners
       : learners.filter((l) => l.grade === gradeFilter);
 
-  /* -------- Create Learner Handler (NEW) -------- */
-
+  /* -------- Create Learner Handler -------- */
   const handleCreateLearner = () => {
     setCreateError("");
 
@@ -306,19 +288,15 @@ export default function AdminDashboard() {
     };
 
     setLearners((prev) => [...prev, newLearner]);
-
     // Clear form
     setNewLearnerName("");
     setNewLearnerGrade("");
     setNewParentPhone("");
-
     setNewParentName("");
     setNewSchool("");
     setNewStrengths("");
     setNewWeaknesses("");
-
     setShowSuccess(true);
-
   };
 
   const confirmRemoveLearner = () => {
@@ -327,20 +305,14 @@ export default function AdminDashboard() {
   const learnerId = pendingRemoval.id;
 
   setLearners((prev) => prev.filter((l) => l.id !== learnerId));
-
-  // Clean up state
   setPendingRemoval(null);
   setRemoveMode(false);
-
   if (selectedLearnerId === learnerId) {
     setSelectedLearnerId(null);
   }
 };
 
-
-
   /* -------- PHASE 1: Attendance Toggle (click dots) -------- */
-
   const toggleAttendance = (learnerId, index) => {
     const dateKey = WEEK_DATES[index];
 
@@ -371,7 +343,7 @@ export default function AdminDashboard() {
   const canCreate =
     newLearnerName.trim() && newLearnerGrade.trim() && newParentPhone.trim();
 
-  /* ✅ NEW: Payment Status Handler (Paid / Not Paid per month) */
+  /* Payment Status Handler (Paid / Not Paid per month) */
   const handlePaymentChange = (learnerId, value) => {
     setLearners((prev) =>
       prev.map((l) => {
@@ -390,11 +362,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-10 space-y-12">
-      {/* ✅ Only change here: header now includes month badge */}
+      {/* header includes month badge */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold text-navy">Admin Dashboard</h1>
 
-        {/* ✅ NEW: Month/Date Display */}
+        {/* Month/Date Display */}
         <span className="text-sm px-4 py-1 rounded-full bg-gold text-navy font-semibold">
           Payments for {CURRENT_MONTH_LABEL}
         </span>
@@ -487,7 +459,7 @@ export default function AdminDashboard() {
         {/* ---------------- FOCUS THIS WEEK ---------------- */}
         <div className="bg-white/70 backdrop-blur-xl border border-white/40 p-6 rounded-xl shadow-lg space-y-5">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-medium">📝 Focus This Week</h2>
+            <h2 className="text-xl font-medium"> Focus This Week</h2>
 
             <button
               onClick={() => setEditingFocus(!editingFocus)}
@@ -527,7 +499,7 @@ export default function AdminDashboard() {
           {/* Lesson Planning */}
           <div>
             <h3 className="text-sm font-semibold text-gray-700 mb-1">
-              🔗 Lesson Planning
+              Lesson Planning
             </h3>
 
             {editingFocus ? (
@@ -546,7 +518,7 @@ export default function AdminDashboard() {
           {/* Tutor Notes */}
           <div>
             <h3 className="text-sm font-semibold text-gray-700 mb-1">
-              📘 Tutor Notes
+              Tutor Notes
             </h3>
 
             {editingFocus ? (
@@ -565,7 +537,7 @@ export default function AdminDashboard() {
           {/* Weekly Goals */}
           <div>
             <h3 className="text-sm font-semibold text-gray-700 mb-1">
-              🎯 Weekly Goals
+              Weekly Goals
             </h3>
 
             {editingFocus ? (
@@ -711,10 +683,10 @@ export default function AdminDashboard() {
       {/* ---------------- ATTENDANCE SNAPSHOT (ONLY UPDATED WITH M T W T F) ---------------- */}
       <section className="bg-white p-6 rounded-xl shadow">
         <h2 className="text-xl font-medium mb-4">
-          📅 Attendance Snapshot (This Week)
+          Attendance Snapshot (This Week)
         </h2>
 
-        {/* ✅ NEW: Day labels row (M T W T F) aligned with dots */}
+        {/* Day labels row (M T W T F) aligned with dots */}
         <div className="flex justify-end mb-2">
           <div className="flex gap-2">
             {["M", "T", "W", "T", "F"].map((day, i) => (
@@ -750,7 +722,6 @@ export default function AdminDashboard() {
       </section>
 
       {/* ---------------- LEARNERS ---------------- */}
-      
       <section className="bg-white p-6 rounded-xl shadow">
         <div className="flex justify-between items-center mb-4">
           {/* Left */}

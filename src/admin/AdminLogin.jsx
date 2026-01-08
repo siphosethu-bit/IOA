@@ -36,7 +36,6 @@ export default function AdminLogin() {
       return;
     }
 
-    // ✅ Allowed
     navigate("/admin/dashboard");
   };
 
@@ -92,7 +91,7 @@ export default function AdminLogin() {
         </button>
       </div>
 
-      {/* ❗ GLASS ERROR MODAL (Missing details) */}
+      {/* GLASS ERROR MODAL (Missing details) */}
       {showError && (
         <div className="fixed inset-0 z-30 flex items-center justify-center">
           {/* Backdrop */}
@@ -129,7 +128,7 @@ export default function AdminLogin() {
         </div>
       )}
 
-      {/* 🚫 GLASS ERROR MODAL (Wrong credentials) */}
+      {/*GLASS ERROR MODAL (Wrong credentials) */}
       {showDenied && (
         <div className="fixed inset-0 z-30 flex items-center justify-center">
           {/* Backdrop */}
