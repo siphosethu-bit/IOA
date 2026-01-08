@@ -904,7 +904,7 @@ export default function AdminDashboard() {
             </h2>
 
             <p className="text-sm text-gray-600 mb-4">
-              Grade {selectedLearner.grade} — {selectedLearner.school}
+              Grade {selectedLearner.grade} {selectedLearner.school}
             </p>
 
             <p>
