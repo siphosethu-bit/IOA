@@ -1,13 +1,14 @@
+/* Importing necessary files from React and React Router and personal components */
 import { useState } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import ParentPortal from "./ParentPortal";
 import AdminLogin from "./admin/AdminLogin";
 import AdminDashboard from "./admin/AdminDashboard";
 
+/* WhatsApp contact number */
 const ADMIN_WHATSAPP = "27671426283";
 
-/* ======================= DATA ======================= */
-
+/* DATA about IOA  */
 const packages = [
   {
     id: "highschool",
@@ -31,6 +32,7 @@ const packages = [
   },
 ];
 
+/* Subjects offered */
 const subjectsOffered = [
   "Mathematics",
   "Physical Sciences",
@@ -39,7 +41,7 @@ const subjectsOffered = [
   "Technology",
 ];
 
-/* ✅ NEW: Pricing options (added only) */
+/* Pricing options */
 const pricingOptions = [
   {
     id: "one-on-one",
@@ -70,8 +72,7 @@ const pricingOptions = [
   },
 ];
 
-/* ---------------- TESTIMONIALS ---------------- */
-
+/*  TESTIMONIALS */
 const testimonials = [
   {
     name: "Thabo M.",
@@ -105,8 +106,7 @@ const testimonials = [
   },
 ];
 
-/* ======================= APP ======================= */
-
+/*  APP  */
 export default function App() {
   return (
     <Routes>
@@ -120,13 +120,7 @@ export default function App() {
   );
 }
 
-// ⚠️ EVERYTHING ABOVE REMAINS EXACTLY THE SAME
-// imports, data, helpers — UNCHANGED
-
-// ... [imports + constants unchanged]
-
-/* ======================= PUBLIC SITE ======================= */
-
+/*  PUBLIC SITE  */
 function PublicSite() {
   const [selectedPackage, setSelectedPackage] = useState(packages[0]);
   const [bookingStatus, setBookingStatus] = useState("idle");
@@ -159,7 +153,7 @@ function PublicSite() {
         amount: cartItem.price, // rands
         description: `${cartItem.title} – ${cartItem.subtitle}`,
         successUrl: "https://inevitableacademy.com/payment-success",
-cancelUrl: "https://inevitableacademy.com/payment-cancelled",
+        cancelUrl: "https://inevitableacademy.com/payment-cancelled",
 
       }),
     });
@@ -175,7 +169,6 @@ cancelUrl: "https://inevitableacademy.com/payment-cancelled",
     }
 
     console.log("Checkout parsed:", data);
-
 
     if (!res.ok || !data.checkoutUrl) {
       throw new Error("Checkout creation failed");
@@ -220,23 +213,23 @@ cancelUrl: "https://inevitableacademy.com/payment-cancelled",
     if (!bookingDetails || !cartItem) return;
 
     const msg = `
-New booking request – Inevitable Online Academy
+      New booking request – Inevitable Online Academy
 
-Learner: ${bookingDetails.learnerName}
-Parent: ${bookingDetails.parentName || "N/A"}
-Grade: ${bookingDetails.grade}
-Package: ${selectedPackage.name}
+      Learner: ${bookingDetails.learnerName}
+      Parent: ${bookingDetails.parentName || "N/A"}
+      Grade: ${bookingDetails.grade}
+      Package: ${selectedPackage.name}
 
-Selected tutoring option:
-${cartItem.title} – ${cartItem.subtitle}
-Price: R${cartItem.price}
+      Selected tutoring option:
+      ${cartItem.title} – ${cartItem.subtitle}
+      Price: R${cartItem.price}
 
-WhatsApp: ${bookingDetails.contactWhatsapp}
-Email: ${bookingDetails.email}
+      WhatsApp: ${bookingDetails.contactWhatsapp}
+      Email: ${bookingDetails.email}
 
-Notes:
-${bookingDetails.notes}
-    `.trim();
+      Notes:
+      ${bookingDetails.notes}
+          `.trim();
 
     window.open(
       `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`
@@ -309,8 +302,7 @@ ${bookingDetails.notes}
 }
 
 
-/* ======================= NAVBAR ======================= */
-
+/*  NAVBAR  */
 function Navbar() {
   const navigate = useNavigate();
 
@@ -333,7 +325,7 @@ function Navbar() {
           <NavItem href="#progress">Progress</NavItem>
           <NavItem href="#contact">Contact</NavItem>
 
-          {/* ✅ ADMIN BUTTON */}
+          {/*ADMIN BUTTON */}
           <button
             onClick={() => navigate("/admin")}
             className="ml-4 px-4 py-1.5 rounded-full border border-gold text-gold hover:bg-gold hover:text-navy transition"
@@ -354,13 +346,7 @@ function NavItem({ href, children }) {
   );
 }
 
-/* ======================= EVERYTHING BELOW ======================= */
-/* UNCHANGED: Hero, Services, Forms, Footer */
-/* KEEP YOUR EXISTING CODE EXACTLY AS IS */
-/* (no logic changed below this point) */
-
-/* -------------------------------- HERO -------------------------------- */
-
+/*  HERO  */
 function Hero() {
   const navigate = useNavigate();
 
@@ -417,7 +403,7 @@ function Hero() {
               </a>
             </div>
 
-            {/* ✅ NEW ADMIN BUTTON (ONLY ADDITION) */}
+            {/* Another ADMIN BUTTON */}
             <div className="mt-4">
               <button
                 onClick={() => navigate("/admin")}
@@ -444,8 +430,6 @@ function Hero() {
 }
 
 /* ------------------------------- SERVICES ------------------------------- */
-/* (Everything below here is UNCHANGED from your original file) */
-
 function Services() {
   return (
     <section id="services" className="space-y-10">
@@ -476,7 +460,6 @@ function Services() {
 }
 
 /* ---------------- TESTIMONIALS ---------------- */
-
 function Testimonials() {
   return (
     <section className="space-y-6 overflow-hidden">
@@ -546,7 +529,6 @@ function MVCard({ title, text }) {
 }
 
 /* ----------------------------- SUBJECTS ----------------------------- */
-
 function SubjectsSection() {
   return (
     <section className="space-y-4">
@@ -568,7 +550,6 @@ function SubjectsSection() {
 }
 
 /* ---------------------------- PACKAGE SELECTOR ---------------------------- */
-
 function PackageSelector({ packages, selectedPackage, onSelect }) {
   return (
     <div className="grid sm:grid-cols-2 gap-6">
@@ -595,7 +576,7 @@ function PackageSelector({ packages, selectedPackage, onSelect }) {
   );
 }
 
-/* ✅ NEW: Pricing + Cart block (added under package selection) */
+/* Pricing + Cart block */
 function PricingAndCart({
   pricingOptions,
   addingId,
@@ -785,7 +766,6 @@ function PricingAndCart({
 }
 
 /* ------------------------------ STATUS BAR ------------------------------ */
-
 function StatusBar({ status }) {
   let text = "No booking yet";
   let style = "bg-gray-50 border-gray-200 text-gray-600";
@@ -804,7 +784,6 @@ function StatusBar({ status }) {
 }
 
 /* ----------------------------- BOOKING FORM ----------------------------- */
-
 function BookingForm({ selectedPackage, onSubmitted }) {
   const [form, setForm] = useState({
     isParent: "parent",
@@ -825,7 +804,6 @@ function BookingForm({ selectedPackage, onSubmitted }) {
   const submit = (e) => {
     e.preventDefault();
 
-    // ✅ NEW FLOW:
     // Save booking details first (cart + checkout happens above).
     onSubmitted({ ...form, selectedPackageName: selectedPackage.name });
   };
@@ -917,7 +895,6 @@ function BookingForm({ selectedPackage, onSubmitted }) {
         onChange={update}
       />
 
-      {/* ✅ Button text updated to match new flow (still same styling) */}
       <button
         type="submit"
         className="px-5 py-2 bg-gold text-navy font-semibold rounded-md shadow hover:bg-[#b88f20] transition"
@@ -958,7 +935,6 @@ function Textarea({ label, ...props }) {
 }
 
 /* -------------------------- LEARNER PROGRESS -------------------------- */
-
 function LearnerProgress() {
   const progress = [
     { subject: "Mathematics", percent: 65 },
@@ -996,7 +972,6 @@ function LearnerProgress() {
 }
 
 /* ------------------------------- CONTACT ------------------------------- */
-
 function Contact() {
   return (
     <section id="contact" className="space-y-4">
@@ -1033,13 +1008,12 @@ function Contact() {
 }
 
 /* -------------------------------- FOOTER -------------------------------- */
-
 function Footer() {
   return (
     <footer className="mt-20 py-6 border-t border-gray-200 bg-gray-50">
       <div className="max-w-6xl mx-auto px-6 text-xs text-gray-600 flex justify-between">
         <span>© {new Date().getFullYear()} Inevitable Online Academy</span>
-        <span>Built with ❤️ in South Africa</span>
+        <span>Built with love in South Africa</span>
       </div>
     </footer>
   );

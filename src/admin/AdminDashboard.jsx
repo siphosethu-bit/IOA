@@ -4,12 +4,6 @@
 */
 import { useEffect, useState } from "react";
 
-/* ---------------- MOCK DATA ---------------- */
-/* Creating constant (never changes) list of things to use in system */
-const TERMS = ["Term 1", "Term 2", "Term 3", "Term 4"];
-const GRADES = ["All", "9", "10", "11", "12"];
-
-/* ---------------- Month helpers (for monthly payments tracking) ---------------- */
 /* Creating a unique label for each month in the format YYYY-MM */
 const getCurrentMonthKey = () => {
   const d = new Date();
@@ -18,6 +12,29 @@ const getCurrentMonthKey = () => {
 
 /* Current month key and label */
 const CURRENT_MONTH_KEY = getCurrentMonthKey();
+
+const mapLearnerFromDb = (row) => ({
+  id: row.id,
+  name: row.name,
+  grade: String(row.grade ?? ""),
+  parent: row.parent_name ?? "Not specified",
+  phone: row.parent_phone ?? "",
+  school: row.school ?? "Not specified",
+  averages: [0, 0, 0], // keep your UI working for now
+  strengths: row.strengths ?? "—",
+  weaknesses: row.weaknesses ?? "—",
+  career: row.career ?? "—",
+  attendance: [false, false, false, false, false], // until we wire attendance table
+  attendanceByDate: {},
+  payments: { [CURRENT_MONTH_KEY]: false }, // until we wire payments table
+});
+
+/* ---------------- MOCK DATA ---------------- */
+/* Creating constant (never changes) list of things to use in system */
+const TERMS = ["Term 1", "Term 2", "Term 3", "Term 4"];
+const GRADES = ["All", "9", "10", "11", "12"];
+
+/* ---------------- Month helpers (for monthly payments tracking) ---------------- */
 const CURRENT_MONTH_LABEL = new Date().toLocaleString("default", {
   month: "long",
   year: "numeric",
@@ -25,54 +42,7 @@ const CURRENT_MONTH_LABEL = new Date().toLocaleString("default", {
 
 /* ---------------- MOCK LEARNERS ---------------- */
 /* Sample data for learners */
-const MOCK_LEARNERS = [
-  {
-    id: 1,
-    name: "Thabo Mokoena",
-    grade: "10",
-    parent: "Mrs Mokoena",
-    phone: "0712345678",
-    school: "Parktown High",
-    averages: [45, 58, 72],
-    strengths: "Algebra, Graphs",
-    weaknesses: "Word problems",
-    career: "Engineering",
-    attendance: [true, true, false, true, true],
-    attendanceByDate: {},
-    /* monthly payments map */
-    payments: { [CURRENT_MONTH_KEY]: false },
-  },
-  {
-    id: 2,
-    name: "Anele Dlamini",
-    grade: "11",
-    parent: "Ms Dlamini",
-    phone: "0729988776",
-    school: "Soweto Science School",
-    averages: [62, 66, 69],
-    strengths: "Trigonometry",
-    weaknesses: "Chemistry calculations",
-    career: "Medicine",
-    attendance: [true, true, true, true, true],
-    attendanceByDate: {},
-    payments: { [CURRENT_MONTH_KEY]: true },
-  },
-  {
-    id: 3,
-    name: "Sipho Nkosi",
-    grade: "9",
-    parent: "Mrs Nkosi",
-    phone: "0784455667",
-    school: "King Edward VII",
-    averages: [38, 42, 48],
-    strengths: "Geometry",
-    weaknesses: "Foundations",
-    career: "Architecture",
-    attendance: [false, true, false, true, false],
-    attendanceByDate: {},
-    payments: { [CURRENT_MONTH_KEY]: false },
-  },
-];
+
 
 /* ---------------- HELPERS ---------------- */
 /* Determine color based on average score */
@@ -106,39 +76,7 @@ const getWeekDates = () => {
 const WEEK_DATES = getWeekDates();
 
 /* -------- PHASE 2: Local Storage (demo data) -------- */
-const STORAGE_KEY = "ioa_admin_learners_v1";
 
-// Normalize/upgrade any saved data to the shape we expect
-const hydrateLearners = (rawLearners) => {
-  const list = Array.isArray(rawLearners) ? rawLearners : [];
-
-  return list.map((l) => {
-    const attendance = Array.isArray(l.attendance)
-      ? l.attendance.slice(0, 5)
-      : [false, false, false, false, false];
-
-    // Ensure length is exactly 5
-    while (attendance.length < 5) attendance.push(false);
-
-    const attendanceByDate =
-      l && typeof l.attendanceByDate === "object" && l.attendanceByDate
-        ? { ...l.attendanceByDate }
-        : {};
-
-    // Backfill current week’s dates from the attendance array (so old data still works)
-    WEEK_DATES.forEach((dateKey, i) => {
-      if (attendanceByDate[dateKey] === undefined) {
-        attendanceByDate[dateKey] = !!attendance[i];
-      }
-    });
-
-    return {
-      ...l,
-      attendance,
-      attendanceByDate,
-    };
-  });
-};
 
 /* -------- PHASE 2: Monthly Calendar Helpers -------- */
 const getMonthDays = (year, month) => {
@@ -162,25 +100,6 @@ const formatDateKey = (date) =>
 /* ---------------- MAIN ---------------- */
 
 export default function AdminDashboard() {
-  // learners is now stateful so we can add new learners
-  const [learners, setLearners] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return hydrateLearners(JSON.parse(saved));
-    } catch (e) {
-      // ignore
-    }
-    return hydrateLearners(MOCK_LEARNERS);
-  });
-
-  // Persist demo data so refresh doesn’t wipe attendance/payments
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(learners));
-    } catch (e) {
-      // ignore
-    }
-  }, [learners]);
 
   /* -------- Class Performance State -------- */
   const [term, setTerm] = useState(1);
@@ -191,6 +110,9 @@ export default function AdminDashboard() {
   const [removeNotice, setRemoveNotice] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState(null);
   const [removeMode, setRemoveMode] = useState(false);
+  const [learners, setLearners] = useState([]);
+  const [loadingLearners, setLoadingLearners] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   /* -------- Load Marks -------- */
   const selectedLearner = learners.find(
@@ -202,6 +124,7 @@ export default function AdminDashboard() {
   ]);
 
   /* -------- Register Learner State (NEW) -------- */
+
   const [newLearnerName, setNewLearnerName] = useState("");
   const [newLearnerGrade, setNewLearnerGrade] = useState("");
   const [newParentPhone, setNewParentPhone] = useState("");
@@ -210,6 +133,27 @@ export default function AdminDashboard() {
   const [newStrengths, setNewStrengths] = useState("");
   const [newWeaknesses, setNewWeaknesses] = useState("");
   const [createError, setCreateError] = useState("");
+
+
+  useEffect(() => {
+  (async () => {
+    try {
+      setLoadError("");
+      setLoadingLearners(true);
+
+      const res = await fetch("/.netlify/functions/get-learners");
+      if (!res.ok) throw new Error(`Failed to load learners (${res.status})`);
+
+      const data = await res.json();
+      setLearners((Array.isArray(data) ? data : []).map(mapLearnerFromDb));
+    } catch (err) {
+      setLoadError(err.message || "Failed to load learners");
+    } finally {
+      setLoadingLearners(false);
+    }
+  })();
+}, []);
+
 
   /* -------- Focus This Week State -------- */
   const [editingFocus, setEditingFocus] = useState(false);
@@ -249,45 +193,51 @@ export default function AdminDashboard() {
       : learners.filter((l) => l.grade === gradeFilter);
 
   /* -------- Create Learner Handler -------- */
-  const handleCreateLearner = () => {
-    setCreateError("");
+  const handleCreateLearner = async () => {
+  setCreateError("");
 
-    const name = newLearnerName.trim();
-    const gradeNormalized = normalizeGrade(newLearnerGrade.trim());
-    const phone = newParentPhone.trim();
+  const name = newLearnerName.trim();
+  const gradeNormalized = normalizeGrade(newLearnerGrade.trim());
+  const phone = newParentPhone.trim();
 
-    // Validate required fields
-    if (!name || !gradeNormalized || !phone) {
-      setCreateError(
-        "Please fill in Learner name, Grade, and Parent phone number."
-      );
-      return;
+  if (!name || !gradeNormalized || !phone) {
+    setCreateError("Please fill in Learner name, Grade, and Parent phone number.");
+    return;
+  }
+
+  const allowedGrades = GRADES.filter((g) => g !== "All");
+  if (!allowedGrades.includes(gradeNormalized)) {
+    setCreateError("Grade must be 9, 10, 11, or 12.");
+    return;
+  }
+
+  const payload = {
+    name,
+    grade: Number(gradeNormalized),                 // DB expects INT
+    school: newSchool.trim() || "Not specified",
+    parent_name: newParentName.trim() || "Not specified",
+    parent_phone: phone,
+    strengths: newStrengths.trim() || "—",
+    weaknesses: newWeaknesses.trim() || "—",
+    career: "—",
+  };
+
+  try {
+    const res = await fetch("/.netlify/functions/create-learner", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(txt || "Failed to create learner");
     }
 
-    // Validate grade is one of our supported grades (9-12)
-    const allowedGrades = GRADES.filter((g) => g !== "All");
-    if (!allowedGrades.includes(gradeNormalized)) {
-      setCreateError("Grade must be 9, 10, 11, or 12.");
-      return;
-    }
+    const created = await res.json();
 
-    const newLearner = {
-      id: Date.now(),
-      name,
-      grade: gradeNormalized,
-      parent: newParentName.trim() || "Not specified",
-      phone,
-      school: newSchool.trim() || "Not specified",
-      averages: [0, 0, 0],
-      strengths: newStrengths.trim() || "—",
-      weaknesses: newWeaknesses.trim() || "—",
-      career: "—",
-      attendance: [false, false, false, false, false],
-      attendanceByDate: {},
-      payments: { [CURRENT_MONTH_KEY]: false },
-    };
+    setLearners((prev) => [...prev, mapLearnerFromDb(created)]);
 
-    setLearners((prev) => [...prev, newLearner]);
     // Clear form
     setNewLearnerName("");
     setNewLearnerGrade("");
@@ -297,7 +247,11 @@ export default function AdminDashboard() {
     setNewStrengths("");
     setNewWeaknesses("");
     setShowSuccess(true);
-  };
+  } catch (err) {
+    setCreateError(err.message || "Failed to create learner");
+  }
+};
+
 
   const confirmRemoveLearner = () => {
   if (!pendingRemoval) return;
@@ -370,6 +324,13 @@ export default function AdminDashboard() {
         <span className="text-sm px-4 py-1 rounded-full bg-gold text-navy font-semibold">
           Payments for {CURRENT_MONTH_LABEL}
         </span>
+        {loadingLearners && (
+            <p className="text-sm text-gray-500">Loading learners…</p>
+          )}
+
+          {loadError && (
+            <p className="text-sm text-red-600">{loadError}</p>
+          )}
       </div>
 
       {/* ---------------- TOP GRID ---------------- */}
