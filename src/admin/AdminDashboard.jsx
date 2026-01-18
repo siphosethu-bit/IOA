@@ -267,32 +267,25 @@ export default function AdminDashboard() {
 };
 
   /* -------- PHASE 1: Attendance Toggle (click dots) -------- */
-  const toggleAttendance = (learnerId, index) => {
-    const dateKey = WEEK_DATES[index];
+  const toggleAttendance = async (learnerId, date) => {
+  try {
+    await fetch("/.netlify/functions/set-attendance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        learnerId,
+        date,
+        present: true, // or toggle based on existing state
+      }),
+    });
 
-    setLearners((prev) =>
-      prev.map((l) => {
-        if (l.id !== learnerId) return l;
+    // After save → reload attendance from DB
+    await loadAttendance();
+  } catch (err) {
+    console.error("Failed to save attendance", err);
+  }
+};
 
-        const updatedAttendance = [
-          ...(l.attendance || [false, false, false, false, false]),
-        ];
-        // Ensure length
-        while (updatedAttendance.length < 5) updatedAttendance.push(false);
-
-        updatedAttendance[index] = !updatedAttendance[index];
-
-        return {
-          ...l,
-          attendance: updatedAttendance,
-          attendanceByDate: {
-            ...(l.attendanceByDate || {}),
-            [dateKey]: updatedAttendance[index],
-          },
-        };
-      })
-    );
-  };
 
   const canCreate =
     newLearnerName.trim() && newLearnerGrade.trim() && newParentPhone.trim();
@@ -303,13 +296,7 @@ export default function AdminDashboard() {
       prev.map((l) => {
         if (l.id !== learnerId) return l;
 
-        return {
-          ...l,
-          payments: {
-            ...(l.payments || {}),
-            [CURRENT_MONTH_KEY]: value === "paid",
-          },
-        };
+        ;
       })
     );
   };

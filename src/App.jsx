@@ -47,8 +47,8 @@ const pricingOptions = [
     id: "one-on-one",
     title: "One-on-one session",
     subtitle: "Per hour",
-    price: 250,
-    priceLabel: "R250",
+    price: 260,
+    priceLabel: "R260",
     description: "Private 1:1 tutoring tailored to your learner’s needs.",
     badge: "Most flexible",
   },
@@ -56,8 +56,8 @@ const pricingOptions = [
     id: "group-1",
     title: "Group sessions",
     subtitle: "1 subject • Monthly (2 sessions/week)",
-    price: 250,
-    priceLabel: "R250",
+    price: 269,
+    priceLabel: "R269",
     description: "Structured group sessions for one subject, twice per week.",
     badge: "Best value",
   },
@@ -65,8 +65,8 @@ const pricingOptions = [
     id: "group-2",
     title: "Group sessions",
     subtitle: "2 subjects • Monthly (2 sessions/week)",
-    price: 400,
-    priceLabel: "R400",
+    price: 439,
+    priceLabel: "R439",
     description: "Two subjects supported monthly with consistent weekly sessions.",
     badge: "Popular",
   },
@@ -750,7 +750,7 @@ function PricingAndCart({
                   onClick={onPayOnline}
                   className="w-full px-4 py-2 border border-gold text-gold font-semibold rounded-md hover:bg-gold hover:text-navy transition"
                 >
-                  Pay online (coming soon)
+                  Pay online
                 </button>
 
                 <p className="text-xs text-gray-500">
