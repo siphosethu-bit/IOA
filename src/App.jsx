@@ -1,0 +1,1020 @@
+/* Importing necessary files from React and React Router and personal components */
+import { useState } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
+import ParentPortal from "./ParentPortal";
+import AdminLogin from "./admin/AdminLogin";
+import AdminDashboard from "./admin/AdminDashboard";
+
+/* WhatsApp contact number */
+const ADMIN_WHATSAPP = "27671426283";
+
+/* DATA about IOA  */
+const packages = [
+  {
+    id: "highschool",
+    name: "Grade 8–12 STEM Tutoring",
+    description: "Online Maths & Science sessions aligned with the CAPS curriculum.",
+  },
+  {
+    id: "nbt",
+    name: "NBT Prep Package",
+    description: "Focused NBT Mathematics & Academic Literacy preparation.",
+  },
+  {
+    id: "uni-apps",
+    name: "University Applications Support",
+    description: "Help with online applications, personal statements & documentation.",
+  },
+  {
+    id: "k53",
+    name: "K53 Tutoring",
+    description: "Theory support for learners preparing for the K53 test.",
+  },
+];
+
+/* Subjects offered */
+const subjectsOffered = [
+  "Mathematics",
+  "Physical Sciences",
+  "Life Sciences",
+  "Natural Sciences",
+  "Technology",
+];
+
+/* Pricing options */
+const pricingOptions = [
+  {
+    id: "one-on-one",
+    title: "One-on-one session",
+    subtitle: "Per hour",
+    price: 260,
+    priceLabel: "R260",
+    description: "Private 1:1 tutoring tailored to your learner’s needs.",
+    badge: "Most flexible",
+  },
+  {
+    id: "group-1",
+    title: "Group sessions",
+    subtitle: "1 subject • Monthly (2 sessions/week)",
+    price: 269,
+    priceLabel: "R269",
+    description: "Structured group sessions for one subject, twice per week.",
+    badge: "Best value",
+  },
+  {
+    id: "group-2",
+    title: "Group sessions",
+    subtitle: "2 subjects • Monthly (2 sessions/week)",
+    price: 439,
+    priceLabel: "R439",
+    description: "Two subjects supported monthly with consistent weekly sessions.",
+    badge: "Popular",
+  },
+];
+
+/*  TESTIMONIALS */
+const testimonials = [
+  {
+    name: "Thabo M.",
+    role: "Parent (Grade 10 learner)",
+    quote:
+      "My child moved from 45% to 68% in one term. The tutors explain concepts patiently and keep us updated.",
+  },
+  {
+    name: "Sipho D.",
+    role: "Grade 11 learner",
+    quote:
+      "Maths finally makes sense now. The sessions are structured and I feel more confident writing tests.",
+  },
+  {
+    name: "Tshepo K.",
+    role: "Parent (Grade 9 learner)",
+    quote:
+      "What I like most is the feedback. I know exactly where my child is improving and what needs work.",
+  },
+  {
+    name: "Themba N.",
+    role: "Parent (Grade 12 learner)",
+    quote:
+      "NBT preparation was excellent. My son improved significantly and approached exams with confidence.",
+  },
+  {
+    name: "Anele S.",
+    role: "Grade 10 learner",
+    quote:
+      "The tutors are supportive and never rush. I’m no longer scared of Physical Sciences.",
+  },
+];
+
+/*  APP  */
+export default function App() {
+  return (
+    <Routes>
+      {/* PUBLIC SITE */}
+      <Route path="/" element={<PublicSite />} />
+
+      {/* ADMIN */}
+      <Route path="/admin" element={<AdminLogin />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+    </Routes>
+  );
+}
+
+/*  PUBLIC SITE  */
+function PublicSite() {
+  const [selectedPackage, setSelectedPackage] = useState(packages[0]);
+  const [bookingStatus, setBookingStatus] = useState("idle");
+  const [bookingDetails, setBookingDetails] = useState(null);
+  const [cartItem, setCartItem] = useState(null);
+  const [addingId, setAddingId] = useState(null);
+  const [showCart, setShowCart] = useState(false);
+  const [toast, setToast] = useState({ show: false, text: "" });
+
+  const showToast = (text) => {
+    setToast({ show: true, text });
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(
+      () => setToast({ show: false, text: "" }),
+      1800
+    );
+  };
+  
+  const handlePayOnline = async () => {
+  if (!cartItem) {
+    showToast("Please add a tutoring option to your cart.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/.netlify/functions/create-yoco-checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: cartItem.price, // rands
+        description: `${cartItem.title} – ${cartItem.subtitle}`,
+        successUrl: "https://inevitableacademy.com/payment-success",
+        cancelUrl: "https://inevitableacademy.com/payment-cancelled",
+
+      }),
+    });
+
+    const raw = await res.text();
+    console.log("Checkout raw response:", raw);
+
+    let data = {};
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      console.error("Failed to parse JSON:", e);
+    }
+
+    console.log("Checkout parsed:", data);
+
+    if (!res.ok || !data.checkoutUrl) {
+      throw new Error("Checkout creation failed");
+    }
+
+    window.location.href = data.checkoutUrl;
+  } catch (err) {
+    console.error(err);
+    showToast("Online payment failed. Please try again.");
+  }
+};
+
+
+  const handleSaveBooking = (formPayload) => {
+    setBookingDetails(formPayload);
+    setBookingStatus("pending");
+    showToast("Booking details saved. Now choose a tutoring option below.");
+  };
+
+  const handleAddToCart = (option) => {
+    if (!bookingDetails) {
+      showToast("Please complete your booking details first.");
+      return;
+    }
+
+    setAddingId(option.id);
+
+    setTimeout(() => {
+      setCartItem({ ...option });
+      setShowCart(true);
+      setAddingId(null);
+      showToast(`${option.title} added to cart.`);
+    }, 260);
+  };
+
+  const handleRemoveCart = () => {
+    setCartItem(null);
+    showToast("Removed from cart.");
+  };
+
+  const handleWhatsAppCheckout = () => {
+    if (!bookingDetails || !cartItem) return;
+
+    const msg = `
+      New booking request – Inevitable Online Academy
+
+      Learner: ${bookingDetails.learnerName}
+      Parent: ${bookingDetails.parentName || "N/A"}
+      Grade: ${bookingDetails.grade}
+      Package: ${selectedPackage.name}
+
+      Selected tutoring option:
+      ${cartItem.title} – ${cartItem.subtitle}
+      Price: R${cartItem.price}
+
+      WhatsApp: ${bookingDetails.contactWhatsapp}
+      Email: ${bookingDetails.email}
+
+      Notes:
+      ${bookingDetails.notes}
+          `.trim();
+
+    window.open(
+      `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`
+    );
+  };
+
+  return (
+    <div className="min-h-screen text-navy font-sans">
+      <Navbar />
+      <Hero />
+
+      {/* Toast */}
+      {toast.show && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50">
+          <div className="rounded-full border border-gold bg-white px-4 py-2 shadow-md text-sm">
+            {toast.text}
+          </div>
+        </div>
+      )}
+
+      <main className="max-w-6xl mx-auto px-6 py-10 space-y-20">
+        <Services />
+        <Testimonials />
+        <SubjectsSection />
+
+        <section id="packages" className="space-y-8">
+          <h2 className="font-serif text-3xl font-semibold">
+            Packages & Booking
+          </h2>
+
+          {/* 1️⃣ Package choice */}
+          <PackageSelector
+            packages={packages}
+            selectedPackage={selectedPackage}
+            onSelect={setSelectedPackage}
+          />
+
+          {/* 2️⃣ Status */}
+          <StatusBar status={bookingStatus} />
+
+          {/* 3️⃣ Booking details FIRST */}
+          <BookingForm
+            selectedPackage={selectedPackage}
+            onSubmitted={handleSaveBooking}
+          />
+
+          {/* 4️⃣ Pricing + Cart AFTER booking details */}
+          <PricingAndCart
+            pricingOptions={pricingOptions}
+            addingId={addingId}
+            onAddToCart={handleAddToCart}
+            cartItem={cartItem}
+            showCart={showCart}
+            setShowCart={setShowCart}
+            onRemoveCart={handleRemoveCart}
+            onWhatsAppCheckout={handleWhatsAppCheckout}
+            onPayOnline={handlePayOnline}
+            bookingDetailsReady={!!bookingDetails}
+          />
+        </section>
+
+        <LearnerProgress />
+        <Contact />
+        <ParentPortal />
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+
+/*  NAVBAR  */
+function Navbar() {
+  const navigate = useNavigate();
+
+  return (
+    <header className="bg-navy text-white py-4 sticky top-0 z-20 shadow-md">
+      <nav className="max-w-6xl mx-auto px-6 flex items-center justify-between">
+        {/* LOGO */}
+        <div className="flex items-center gap-3">
+          <img src="/logo2.png" className="h-7" />
+          <span className="font-semibold text-sm sm:text-base">
+            Inevitable Online Academy
+          </span>
+        </div>
+
+        {/* LINKS */}
+        <div className="hidden sm:flex gap-6 text-sm font-medium items-center">
+          <NavItem href="#services">Services</NavItem>
+          <NavItem href="#packages">Packages</NavItem>
+          <NavItem href="#parent-portal">Parent Portal</NavItem>
+          <NavItem href="#progress">Progress</NavItem>
+          <NavItem href="#contact">Contact</NavItem>
+
+          {/*ADMIN BUTTON */}
+          <button
+            onClick={() => navigate("/admin")}
+            className="ml-4 px-4 py-1.5 rounded-full border border-gold text-gold hover:bg-gold hover:text-navy transition"
+          >
+            Admin
+          </button>
+        </div>
+      </nav>
+    </header>
+  );
+}
+
+function NavItem({ href, children }) {
+  return (
+    <a href={href} className="hover:text-gold transition">
+      {children}
+    </a>
+  );
+}
+
+/*  HERO  */
+function Hero() {
+  const navigate = useNavigate();
+
+  return (
+    <section className="relative overflow-hidden min-h-[650px] w-full">
+      {/* BACKGROUND VIDEO LAYER */}
+      <div className="absolute inset-0 -z-10 pointer-events-none w-full">
+        <video
+          className="absolute inset-0 w-full h-full object-cover object-center brightness-75"
+          autoPlay
+          muted
+          loop
+          playsInline
+        >
+          <source src="/background.mp4" type="video/mp4" />
+        </video>
+
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-white/40"></div>
+      </div>
+
+      {/* FOREGROUND CONTENT */}
+      <div className="w-full px-6 py-20 mx-auto">
+        <div className="grid md:grid-cols-2 gap-10 items-center">
+          {/* LEFT CONTENT */}
+          <div>
+            <p className="tracking-widest text-xs text-white mb-3 drop-shadow-lg">
+              GAUTENG • ONLINE • STEM FOCUSED
+            </p>
+
+            <h1 className="font-serif text-4xl md:text-5xl font-bold text-white leading-snug mb-6 drop-shadow-xl">
+              Online STEM tutoring from Grade 8–12,
+              NBT prep & university readiness.
+            </h1>
+
+            <p className="text-white/90 text-lg max-w-xl mb-6 drop-shadow-lg">
+              Inevitable Online Academy helps learners build strong foundations
+              in Mathematics & Science, excel in NBTs, and confidently apply to
+              universities across South Africa.
+            </p>
+
+            <div className="flex gap-4">
+              <a
+                href="#packages"
+                className="px-5 py-2 bg-gold text-navy font-semibold rounded-md shadow hover:bg-[#b88f20] transition"
+              >
+                Book a session
+              </a>
+
+              <a
+                href="#contact"
+                className="px-5 py-2 border border-white text-white font-semibold rounded-md hover:bg-white hover:text-navy transition"
+              >
+                Talk to us
+              </a>
+            </div>
+
+            {/* Another ADMIN BUTTON */}
+            <div className="mt-4">
+              <button
+                onClick={() => navigate("/admin")}
+                className="px-5 py-2 border border-gold text-gold font-semibold rounded-md hover:bg-gold hover:text-navy transition"
+              >
+                Admin Login
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT LOGO */}
+          <div className="hidden md:flex items-center justify-center">
+            <div className="w-px h-60 bg-black/40 mr-10"></div>
+            <img
+              src="/logo.png"
+              alt="Inevitable Online Academy Logo"
+              className="h-60 w-auto opacity-95 drop-shadow-lg animate-coin-spin"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------- SERVICES ------------------------------- */
+function Services() {
+  return (
+    <section id="services" className="space-y-10">
+      <h2 className="font-serif text-3xl font-semibold">What we offer</h2>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <ServiceCard
+          title="Grade 8–12 STEM Tutoring"
+          text="Weekly online classes, exam preparation and homework support in Mathematics & Science."
+        />
+        <ServiceCard
+          title="NBT Services & Resources"
+          text="Targeted practice, past papers and crash courses for NBT Mathematics and Academic Literacy."
+        />
+        <ServiceCard
+          title="University Application Support"
+          text="Assistance with applications, motivation letters and programme selection."
+        />
+        <ServiceCard
+          title="K53 Tutoring"
+          text="Guided lessons on K53 rules and theory to help learners prepare confidently for the test."
+        />
+      </div>
+
+      <MissionVision />
+    </section>
+  );
+}
+
+/* ---------------- TESTIMONIALS ---------------- */
+function Testimonials() {
+  return (
+    <section className="space-y-6 overflow-hidden">
+      <h2 className="font-serif text-3xl font-semibold">
+        What parents & learners say
+      </h2>
+
+      <p className="text-gray-600 max-w-xl">
+        Real progress, real confidence, and consistent academic support.
+      </p>
+
+      <div className="relative w-full overflow-hidden">
+        <div className="flex gap-6 animate-testimonials-scroll">
+          {[...testimonials, ...testimonials].map((t, i) => (
+            <div
+              key={i}
+              className="min-w-[280px] max-w-[280px] bg-white border border-gray-200 rounded-xl p-5 shadow-sm"
+            >
+              <p className="text-sm text-gray-700 italic mb-4">
+                “{t.quote}”
+              </p>
+
+              <div className="text-sm font-semibold text-navy">
+                {t.name}
+              </div>
+              <div className="text-xs text-gray-500">{t.role}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+function ServiceCard({ title, text }) {
+  return (
+    <div className="p-6 border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+      <h3 className="font-serif text-lg font-semibold text-navy mb-2">{title}</h3>
+      <p className="text-gray-700 text-sm">{text}</p>
+    </div>
+  );
+}
+
+function MissionVision() {
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      <MVCard
+        title="Our Mission"
+        text="To make high-quality STEM tutoring, NBT preparation, university support and K53 guidance accessible to every learner in South Africa."
+      />
+      <MVCard
+        title="Our Vision"
+        text="To become the leading online academy offering trusted academic support from Grade 8 to university building confident, future-ready learners."
+      />
+    </div>
+  );
+}
+
+function MVCard({ title, text }) {
+  return (
+    <div className="p-6 bg-gray-50 border border-gray-200 rounded-xl">
+      <h3 className="font-serif text-lg font-semibold text-navy mb-2">{title}</h3>
+      <p className="text-gray-700 text-sm">{text}</p>
+    </div>
+  );
+}
+
+/* ----------------------------- SUBJECTS ----------------------------- */
+function SubjectsSection() {
+  return (
+    <section className="space-y-4">
+      <h2 className="font-serif text-3xl font-semibold">STEM subjects we focus on</h2>
+      <p className="text-gray-600">We currently support Grade 8–12 learners in:</p>
+
+      <div className="flex flex-wrap gap-3">
+        {subjectsOffered.map((s) => (
+          <span
+            key={s}
+            className="px-4 py-1 border border-gold text-gold rounded-full text-sm font-medium"
+          >
+            {s}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------- PACKAGE SELECTOR ---------------------------- */
+function PackageSelector({ packages, selectedPackage, onSelect }) {
+  return (
+    <div className="grid sm:grid-cols-2 gap-6">
+      {packages.map((pkg) => {
+        const active = pkg.id === selectedPackage.id;
+        return (
+          <button
+            key={pkg.id}
+            onClick={() => onSelect(pkg)}
+            className={`text-left p-5 rounded-xl border shadow-sm transition
+              ${
+                active
+                  ? "bg-gold text-navy border-gold"
+                  : "bg-white border-gray-200 hover:bg-gray-50"
+              }`}
+          >
+            <div className="font-serif text-lg font-semibold">{pkg.name}</div>
+            <p className="text-gray-700 text-sm mt-1">{pkg.description}</p>
+            {active && <p className="text-xs font-medium mt-2">Selected package</p>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Pricing + Cart block */
+function PricingAndCart({
+  pricingOptions,
+  addingId,
+  onAddToCart,
+  cartItem,
+  showCart,
+  setShowCart,
+  onRemoveCart,
+  onWhatsAppCheckout,
+  onPayOnline,
+  bookingDetailsReady,
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <h3 className="font-serif text-2xl font-semibold text-navy">
+            Pricing & selection
+          </h3>
+          <p className="text-sm text-gray-600 mt-1 max-w-2xl">
+            Choose the tutoring option you want, add it to your cart, then check out.
+            {` `}
+            {!bookingDetailsReady && (
+              <span className="text-gray-600">
+                (Please submit booking details below first.)
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* Cart toggle button (only appears when there is something or user opened it) */}
+        {(cartItem || showCart) && (
+          <button
+            type="button"
+            onClick={() => setShowCart((v) => !v)}
+            className={`px-4 py-2 rounded-full border border-gold text-gold hover:bg-gold hover:text-navy transition ${
+              cartItem ? "animate-cart-pulse" : ""
+            }`}
+          >
+            {showCart ? "Hide cart" : "View cart"}
+          </button>
+        )}
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        {pricingOptions.map((opt) => {
+          const isAdding = addingId === opt.id;
+
+          return (
+            <div
+              key={opt.id}
+              className={`p-6 rounded-xl border bg-white shadow-sm transition ${
+                isAdding ? "scale-[0.99] opacity-90" : "hover:shadow-md"
+              } border-gray-200`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-serif text-lg font-semibold text-navy">
+                    {opt.title}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">{opt.subtitle}</div>
+                </div>
+
+                <div className="text-right">
+                  <div className="text-2xl font-semibold text-navy">{opt.priceLabel}</div>
+                  <div className="text-xs text-gray-500">ZAR</div>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-700 mt-4">{opt.description}</p>
+
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-xs px-3 py-1 rounded-full border border-gold text-gold">
+                  {opt.badge}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => onAddToCart(opt)}
+                  disabled={!bookingDetailsReady}
+                  className={`px-4 py-2 rounded-md font-semibold shadow transition ${
+                    bookingDetailsReady
+                      ? "bg-gold text-navy hover:bg-[#b88f20]"
+                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  }`}
+                >
+                  {isAdding ? "Adding…" : "Add to cart"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Cart Panel */}
+      {(showCart || cartItem) && (
+        <div className="p-6 bg-gray-50 border border-gray-200 rounded-xl">
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <h4 className="font-serif text-xl font-semibold text-navy">Your cart</h4>
+              <p className="text-sm text-gray-600 mt-1">
+                Review your selected option and check out.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowCart(false)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Close
+            </button>
+          </div>
+
+          {!cartItem ? (
+            <div className="mt-5 text-sm text-gray-600">
+              Your cart is empty. Select a pricing option above.
+            </div>
+          ) : (
+            <div className="mt-5 grid md:grid-cols-3 gap-6 items-start">
+              <div className="md:col-span-2">
+                <div className="p-5 bg-white border border-gray-200 rounded-xl">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="font-serif text-lg font-semibold text-navy">
+                        {cartItem.title}
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">{cartItem.subtitle}</div>
+
+                      <div className="mt-3 text-xs text-gray-500">
+                        Linked to your booking request.
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-xl font-semibold text-navy">
+                        R{cartItem.price}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={onRemoveCart}
+                        className="mt-3 text-xs text-gold font-semibold underline hover:text-[#b88f20]"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 bg-white border border-gray-200 rounded-xl space-y-4">
+                <div className="flex justify-between text-sm text-gray-700">
+                  <span>Subtotal</span>
+                  <span className="font-semibold text-navy">R{cartItem.price}</span>
+                </div>
+
+                <div className="text-xs text-gray-500">
+                  Checkout options:
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onWhatsAppCheckout}
+                  className="w-full px-4 py-2 bg-gold text-navy font-semibold rounded-md shadow hover:bg-[#b88f20] transition"
+                >
+                  Checkout via WhatsApp
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onPayOnline}
+                  className="w-full px-4 py-2 border border-gold text-gold font-semibold rounded-md hover:bg-gold hover:text-navy transition"
+                >
+                  Pay online
+                </button>
+
+                <p className="text-xs text-gray-500">
+                  For now, WhatsApp checkout starts your booking chat with IOA.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------ STATUS BAR ------------------------------ */
+function StatusBar({ status }) {
+  let text = "No booking yet";
+  let style = "bg-gray-50 border-gray-200 text-gray-600";
+
+  if (status === "pending") {
+    text = "Booking saved — choose a tutoring option and check out";
+    style = "bg-gray-100 border-gray-300 text-navy";
+  }
+
+  return (
+    <div className={`p-4 rounded-xl border ${style} text-sm`}>
+      {text}
+      <p className="text-xs text-gray-500 mt-1"></p>
+    </div>
+  );
+}
+
+/* ----------------------------- BOOKING FORM ----------------------------- */
+function BookingForm({ selectedPackage, onSubmitted }) {
+  const [form, setForm] = useState({
+    isParent: "parent",
+    learnerName: "",
+    parentName: "",
+    grade: "",
+    subjects: "",
+    preferredTimes: "",
+    contactWhatsapp: "",
+    email: "",
+    notes: "",
+  });
+
+  const update = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+
+    // Save booking details first (cart + checkout happens above).
+    onSubmitted({ ...form, selectedPackageName: selectedPackage.name });
+  };
+
+  return (
+    <form
+      onSubmit={submit}
+      className="p-6 bg-gray-50 border border-gray-200 rounded-xl space-y-6"
+    >
+      <h3 className="font-serif text-xl font-semibold">
+        Book: {selectedPackage.name}
+      </h3>
+
+      <div className="flex gap-4 text-sm">
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="isParent"
+            value="parent"
+            checked={form.isParent === "parent"}
+            onChange={update}
+          />
+          Parent / Guardian
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="isParent"
+            value="learner"
+            checked={form.isParent === "learner"}
+            onChange={update}
+          />
+          Learner
+        </label>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Input
+          label="Learner full name"
+          name="learnerName"
+          value={form.learnerName}
+          onChange={update}
+          required
+        />
+        <Input
+          label="Parent / Guardian name"
+          name="parentName"
+          value={form.parentName}
+          onChange={update}
+        />
+        <Input
+          label="Grade"
+          name="grade"
+          value={form.grade}
+          onChange={update}
+          required
+        />
+        <Input
+          label="WhatsApp number"
+          name="contactWhatsapp"
+          value={form.contactWhatsapp}
+          onChange={update}
+          required
+        />
+        <Input
+          label="Email address"
+          name="email"
+          value={form.email}
+          onChange={update}
+        />
+        <Input
+          label="Subjects / focus areas"
+          name="subjects"
+          value={form.subjects}
+          onChange={update}
+        />
+      </div>
+
+      <Textarea
+        label="Preferred days & times"
+        name="preferredTimes"
+        value={form.preferredTimes}
+        onChange={update}
+      />
+      <Textarea
+        label="Additional notes"
+        name="notes"
+        value={form.notes}
+        onChange={update}
+      />
+
+      <button
+        type="submit"
+        className="px-5 py-2 bg-gold text-navy font-semibold rounded-md shadow hover:bg-[#b88f20] transition"
+      >
+        Save booking details
+      </button>
+
+      <p className="text-xs text-gray-500">
+        After saving, select a tutoring option above and check out via WhatsApp.
+      </p>
+    </form>
+  );
+}
+
+function Input({ label, ...props }) {
+  return (
+    <label className="text-sm">
+      <span className="block text-navy font-medium mb-1">{label}</span>
+      <input
+        {...props}
+        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:border-gold outline-none"
+      />
+    </label>
+  );
+}
+
+function Textarea({ label, ...props }) {
+  return (
+    <label className="text-sm">
+      <span className="block text-navy font-medium mb-1">{label}</span>
+      <textarea
+        {...props}
+        rows={3}
+        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:border-gold outline-none"
+      />
+    </label>
+  );
+}
+
+/* -------------------------- LEARNER PROGRESS -------------------------- */
+function LearnerProgress() {
+  const progress = [
+    { subject: "Mathematics", percent: 65 },
+    { subject: "Physical Sciences", percent: 40 },
+    { subject: "Life Sciences", percent: 55 },
+  ];
+
+  return (
+    <section id="progress" className="space-y-6">
+      <h2 className="font-serif text-3xl font-semibold">Learner progress</h2>
+
+      <p className="text-gray-600 max-w-xl">
+        Parents and learners can monitor improvement across different subjects through
+        tracked progress scores.
+      </p>
+
+      <div className="space-y-4">
+        {progress.map((p) => (
+          <div key={p.subject}>
+            <div className="flex justify-between text-sm text-navy mb-1">
+              <span>{p.subject}</span>
+              <span>{p.percent}%</span>
+            </div>
+            <div className="h-2 bg-gray-300 rounded-full">
+              <div
+                className="h-2 bg-gold rounded-full"
+                style={{ width: `${p.percent}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------- CONTACT ------------------------------- */
+function Contact() {
+  return (
+    <section id="contact" className="space-y-4">
+      <h2 className="font-serif text-3xl font-semibold">Contact & location</h2>
+
+      <p className="text-gray-700 text-sm">
+        Based in Johannesburg, Gauteng available online across all provinces.
+      </p>
+
+      <p className="text-sm">
+        Email:{" "}
+        <a
+          href="mailto:inevitableonlineacademy@gmail.com"
+          className="text-gold font-medium underline hover:text-[#b88f20]"
+        >
+          inevitableonlineacademy@gmail.com
+        </a>
+      </p>
+
+      <button
+        onClick={() =>
+          window.open(
+            "https://wa.me/27671426283?text=" +
+              encodeURIComponent("Hello IOA, I would like to ask about..."),
+            "_blank"
+          )
+        }
+        className="px-5 py-2 bg-gold text-navy font-semibold rounded-md shadow hover:bg-[#b88f20] transition"
+      >
+        Chat with us on WhatsApp
+      </button>
+    </section>
+  );
+}
+
+/* -------------------------------- FOOTER -------------------------------- */
+function Footer() {
+  return (
+    <footer className="mt-20 py-6 border-t border-gray-200 bg-gray-50">
+      <div className="max-w-6xl mx-auto px-6 text-xs text-gray-600 flex justify-between">
+        <span>© {new Date().getFullYear()} Inevitable Online Academy</span>
+        <span>Built with love in South Africa</span>
+      </div>
+    </footer>
+  );
+}
