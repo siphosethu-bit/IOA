@@ -94,6 +94,8 @@ function Navbar() {
           <img
             src="/logo2.png"
             alt="Inevitable Online Academy Logo"
+            loading="eager"
+            decoding="async"
             className="h-7 w-auto object-contain"
           />
           <span className="font-semibold tracking-wide text-white text-sm sm:text-base">
@@ -142,8 +144,9 @@ function Hero() {
             muted
             loop
             playsInline
+            preload="none"
           >
-            <source src="/background.mp4" type="video/mp4" />
+            <source src="/videos/background.mp4" type="video/mp4" />
           </video>
 
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-white/40"></div>

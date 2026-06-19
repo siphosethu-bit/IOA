@@ -1,9 +1,16 @@
 /* Importing necessary files from React and React Router and personal components */
-import { useState } from "react";
+import {
+  Suspense,
+  lazy,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
-import ParentPortal from "./ParentPortal";
-import AdminLogin from "./admin/AdminLogin";
-import AdminDashboard from "./admin/AdminDashboard";
+
+const ParentPortal = lazy(() => import("./ParentPortal"));
+const AdminLogin = lazy(() => import("./admin/AdminLogin"));
+const AdminDashboard = lazy(() => import("./admin/AdminDashboard"));
 
 /* WhatsApp contact number */
 const ADMIN_WHATSAPP = "27671426283";
@@ -109,14 +116,64 @@ const testimonials = [
 /*  APP  */
 export default function App() {
   return (
-    <Routes>
-      {/* PUBLIC SITE */}
-      <Route path="/" element={<PublicSite />} />
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        {/* PUBLIC SITE */}
+        <Route path="/" element={<PublicSite />} />
 
-      {/* ADMIN */}
-      <Route path="/admin" element={<AdminLogin />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-    </Routes>
+        {/* ADMIN */}
+        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen bg-cream flex items-center justify-center text-navy">
+      <div className="rounded-lg border border-gray-200 bg-white px-5 py-3 text-sm shadow-sm">
+        Loading Inevitable Online Academy
+      </div>
+    </div>
+  );
+}
+
+function LazySection({ id, minHeight = "520px", children }) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!ref.current || visible) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "500px 0px" }
+    );
+
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [visible]);
+
+  return (
+    <section id={id} ref={ref} style={{ minHeight }}>
+      {visible ? (
+        <Suspense
+          fallback={
+            <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm">
+              Loading portal
+            </div>
+          }
+        >
+          {children}
+        </Suspense>
+      ) : null}
+    </section>
   );
 }
 
@@ -293,7 +350,9 @@ function PublicSite() {
 
         <LearnerProgress />
         <Contact />
-        <ParentPortal />
+        <LazySection id="parent-portal">
+          <ParentPortal />
+        </LazySection>
       </main>
 
       <Footer />
@@ -311,7 +370,13 @@ function Navbar() {
       <nav className="max-w-6xl mx-auto px-6 flex items-center justify-between">
         {/* LOGO */}
         <div className="flex items-center gap-3">
-          <img src="/logo2.png" className="h-7" />
+          <img
+            src="/logo2.png"
+            className="h-7"
+            alt="Inevitable Online Academy"
+            loading="eager"
+            decoding="async"
+          />
           <span className="font-semibold text-sm sm:text-base">
             Inevitable Online Academy
           </span>
@@ -351,78 +416,57 @@ function Hero() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative overflow-hidden min-h-[650px] w-full">
-      {/* BACKGROUND VIDEO LAYER */}
-      <div className="absolute inset-0 -z-10 pointer-events-none w-full">
-        <video
-          className="absolute inset-0 w-full h-full object-cover object-center brightness-75"
-          autoPlay
-          muted
-          loop
-          playsInline
-        >
-          <source src="/background.mp4" type="video/mp4" />
-        </video>
+    <section className="relative h-[680px] w-full overflow-hidden bg-navy md:h-[620px]">
+      <div
+        className="ioa-hero-background absolute inset-0 bg-cover"
+        style={{ backgroundImage: "url('/IOABG.png')" }}
+        aria-hidden="true"
+      />
+      <div className="absolute inset-0 bg-navy/60" aria-hidden="true" />
+      <div
+        className="absolute inset-0 bg-gradient-to-r from-navy/95 via-navy/60 to-navy/20"
+        aria-hidden="true"
+      />
 
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-white/40"></div>
-      </div>
+      <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl items-center px-6 pb-16 pt-8 md:pb-20 md:pt-6">
+        <div className="max-w-3xl">
+          <p className="mb-4 text-xs font-semibold tracking-[0.18em] text-white/90 drop-shadow-lg">
+            GAUTENG • ONLINE • STEM FOCUSED
+          </p>
 
-      {/* FOREGROUND CONTENT */}
-      <div className="w-full px-6 py-20 mx-auto">
-        <div className="grid md:grid-cols-2 gap-10 items-center">
-          {/* LEFT CONTENT */}
-          <div>
-            <p className="tracking-widest text-xs text-white mb-3 drop-shadow-lg">
-              GAUTENG • ONLINE • STEM FOCUSED
-            </p>
+          <h1 className="mb-6 max-w-3xl font-serif text-4xl font-bold leading-[1.08] text-white drop-shadow-xl sm:text-5xl lg:text-[3.35rem]">
+            Online STEM tutoring from Grade 8–12,
+            <br className="hidden sm:block" /> NBT prep &amp; university readiness.
+          </h1>
 
-            <h1 className="font-serif text-4xl md:text-5xl font-bold text-white leading-snug mb-6 drop-shadow-xl">
-              Online STEM tutoring from Grade 8–12,
-              NBT prep & university readiness.
-            </h1>
+          <p className="mb-7 max-w-xl text-base leading-7 text-white/90 drop-shadow-lg sm:text-lg">
+            Inevitable Online Academy helps learners build strong foundations
+            in Mathematics &amp; Science, excel in NBTs, and confidently apply to
+            universities across South Africa.
+          </p>
 
-            <p className="text-white/90 text-lg max-w-xl mb-6 drop-shadow-lg">
-              Inevitable Online Academy helps learners build strong foundations
-              in Mathematics & Science, excel in NBTs, and confidently apply to
-              universities across South Africa.
-            </p>
+          <div className="flex flex-wrap gap-4">
+            <a
+              href="#packages"
+              className="rounded-md bg-gold px-5 py-2.5 font-semibold text-navy shadow transition hover:bg-[#b88f20]"
+            >
+              Book a session
+            </a>
 
-            <div className="flex gap-4">
-              <a
-                href="#packages"
-                className="px-5 py-2 bg-gold text-navy font-semibold rounded-md shadow hover:bg-[#b88f20] transition"
-              >
-                Book a session
-              </a>
-
-              <a
-                href="#contact"
-                className="px-5 py-2 border border-white text-white font-semibold rounded-md hover:bg-white hover:text-navy transition"
-              >
-                Talk to us
-              </a>
-            </div>
-
-            {/* Another ADMIN BUTTON */}
-            <div className="mt-4">
-              <button
-                onClick={() => navigate("/admin")}
-                className="px-5 py-2 border border-gold text-gold font-semibold rounded-md hover:bg-gold hover:text-navy transition"
-              >
-                Admin Login
-              </button>
-            </div>
+            <a
+              href="#contact"
+              className="rounded-md border border-white px-5 py-2.5 font-semibold text-white transition hover:bg-white hover:text-navy"
+            >
+              Talk to us
+            </a>
           </div>
 
-          {/* RIGHT LOGO */}
-          <div className="hidden md:flex items-center justify-center">
-            <div className="w-px h-60 bg-black/40 mr-10"></div>
-            <img
-              src="/logo.png"
-              alt="Inevitable Online Academy Logo"
-              className="h-60 w-auto opacity-95 drop-shadow-lg animate-coin-spin"
-            />
-          </div>
+          <button
+            onClick={() => navigate("/admin")}
+            className="mt-4 rounded-md border border-gold px-5 py-2.5 font-semibold text-gold transition hover:bg-gold hover:text-navy"
+          >
+            Admin Login
+          </button>
         </div>
       </div>
     </section>
