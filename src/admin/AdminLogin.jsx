@@ -40,20 +40,15 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center">
-      {/* BACKGROUND VIDEO */}
-      <video
-        className="fixed inset-0 w-full h-full object-cover -z-20 brightness-75"
-        autoPlay
-        muted
-        loop
-        playsInline
-      >
-        <source src="/videos/AdminBackgroundVid.mp4" type="video/mp4" />
-      </video>
-
+    <div
+      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-cover bg-center bg-no-repeat px-4 py-8"
+      style={{
+        backgroundImage:
+          "linear-gradient(rgba(11, 26, 42, 0.45), rgba(11, 26, 42, 0.45)), url('/AdminBG.png')",
+      }}
+    >
       {/* LOGIN CARD */}
-      <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white/90 p-6 shadow-2xl">
+      <div className="relative z-10 w-full max-w-sm rounded-xl border border-white/40 bg-white/90 p-6 shadow-[0_24px_70px_rgba(0,0,0,0.35)] backdrop-blur-md sm:p-7">
         <h2 className="text-center text-2xl font-semibold text-navy mb-6">
           Admin Login
         </h2>
